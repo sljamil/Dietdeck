@@ -259,6 +259,7 @@ button{cursor:pointer}
 .dots span:nth-child(2){animation-delay:.15s}
 .dots span:nth-child(3){animation-delay:.3s}
 @keyframes dot{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-7px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
 .modal-result{background:var(--surface2);border-radius:var(--r);padding:14px;margin-bottom:14px;display:none}
 .modal-nut-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--border2)}
 .modal-nut-row:last-child{border-bottom:none}
@@ -406,7 +407,7 @@ button{cursor:pointer}
             <div class="search-row">
               <div class="search-input-wrap">
                 <span class="search-icon">⌕</span>
-                <input class="search-input" id="foodSearch" placeholder="Search food… (e.g. rice, banana, dal chawal)" autocomplete="off"/>
+                <input class="search-input" id="foodSearch" placeholder="Type to search food… (e.g. banana, rice, dal)" autocomplete="off"/>
               </div>
               <input class="qty-input" id="qty" type="number" value="100" min="1" max="9999" title="Grams"/>
               <button class="btn-search" onclick="searchFood()">Search</button>
@@ -770,27 +771,44 @@ function initApp() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// SEARCH + USDA
+// SEARCH + USDA — live autocomplete with cache
 // ═══════════════════════════════════════════════════════════
-async function searchFood() {
+const searchCache = {};
+let searchTimer = null;
+let lastQuery = '';
+
+function onSearchInput() {
   const q = document.getElementById('foodSearch').value.trim();
-  if (!q) return;
-  setStatus('Searching USDA database…', '');
-  closeDropdown();
+  if (!q || q.length < 2) { closeDropdown(); setStatus('', ''); lastQuery = ''; return; }
+  if (q === lastQuery) return;
+  clearTimeout(searchTimer);
+  if (!searchCache[q.toLowerCase()]) showDropdownLoading(q);
+  searchTimer = setTimeout(() => searchFood(q), 300);
+}
+
+async function searchFood(q) {
+  q = q || document.getElementById('foodSearch').value.trim();
+  if (!q || q.length < 2) return;
+  lastQuery = q;
+
+  if (searchCache[q.toLowerCase()]) {
+    renderDropdown(searchCache[q.toLowerCase()], q);
+    setStatus(`${searchCache[q.toLowerCase()].length} results`, 'ok');
+    return;
+  }
+
+  setStatus('Searching…', '');
   try {
-    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&dataType=Foundation,SR%20Legacy&pageSize=8&api_key=${USDA_KEY}`;
+    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&dataType=Foundation,SR%20Legacy&pageSize=10&api_key=${USDA_KEY}`;
     const res = await fetch(url);
     const data = await res.json();
-    if (data.foods?.length) {
-      renderDropdown(data.foods, q);
-      setStatus(`Found ${data.foods.length} results in USDA database`, 'ok');
-    } else {
-      renderDropdown([], q);
-      setStatus('No USDA results — use AI below', '');
-    }
+    const foods = data.foods || [];
+    searchCache[q.toLowerCase()] = foods;
+    renderDropdown(foods, q);
+    setStatus(foods.length ? `${foods.length} results found` : 'No matches — try AI below', foods.length ? 'ok' : '');
   } catch {
     renderDropdown([], q);
-    setStatus('Database unavailable — use AI', 'err');
+    setStatus('Database unavailable — try AI', 'err');
   }
 }
 
@@ -799,12 +817,29 @@ function renderDropdown(foods, query) {
   let html = '';
   foods.forEach(f => {
     const nm = esc(f.description);
-    html += `<div class="drop-item" onclick="pickFood(${f.fdcId},'${nm}')">
-      <div><div class="drop-name">${nm}</div>${f.brandOwner ? `<div class="drop-brand">${esc(f.brandOwner)}</div>` : ''}</div>
+    const nutrients = f.foodNutrients || [];
+    const gn = id => {
+      const n = nutrients.find(x => x.nutrientId === id || x.nutrientNumber === String(id));
+      return n ? Math.round(n.value || 0) : '–';
+    };
+    const cal  = gn(1008) !== '–' ? gn(1008) : gn(2047);
+    const prot = gn(1003);
+    const carb = gn(1005);
+    const fat  = gn(1004);
+    html += `<div class="drop-item" onclick="pickFood(${f.fdcId},'${nm.replace(/'/g,"\\'")}')">
+      <div style="flex:1;min-width:0">
+        <div class="drop-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}</div>
+        <div style="display:flex;gap:8px;margin-top:3px">
+          <span style="font-size:10px;background:#f0ece5;color:#5a574f;padding:1px 6px;border-radius:10px">${cal} kcal</span>
+          <span style="font-size:10px;color:#2563a8">P ${prot}g</span>
+          <span style="font-size:10px;color:#2a5c45">C ${carb}g</span>
+          <span style="font-size:10px;color:#c8963a">F ${fat}g</span>
+        </div>
+      </div>
       <div class="drop-add">+ Add</div>
     </div>`;
   });
-  if (!foods.length) html += `<div class="drop-none">No results in database</div>`;
+  if (!foods.length) html += `<div class="drop-none">No results — try the AI option below</div>`;
   html += `<div class="drop-ai" onclick="openAiModal('${esc(query)}')">
     <span class="drop-ai-icon">✦</span>
     <span class="drop-ai-text">Ask AI: "${esc(query)}"</span>
@@ -815,15 +850,23 @@ function renderDropdown(foods, query) {
 
 async function pickFood(fdcId, name) {
   closeDropdown();
-  setStatus('Loading nutrition data…', '');
+  setStatus('Adding…', '');
   const qty = parseFloat(document.getElementById('qty').value) || 100;
   try {
-    const res = await fetch(`https://api.nal.usda.gov/fdc/v1/food/${fdcId}?api_key=${USDA_KEY}`);
-    const food = await res.json();
+    const cacheKey = `fdc_${fdcId}`;
+    let food;
+    if (searchCache[cacheKey]) {
+      food = searchCache[cacheKey];
+    } else {
+      const res = await fetch(`https://api.nal.usda.gov/fdc/v1/food/${fdcId}?api_key=${USDA_KEY}`);
+      food = await res.json();
+      searchCache[cacheKey] = food;
+    }
     const n = extractNutrients(food.foodNutrients, qty);
     addToMeal({ name, qty, ...n, source:'usda' }, pendingMeal);
     setStatus(`✓ Added ${name} (${qty}g)`, 'ok');
     document.getElementById('foodSearch').value = '';
+    lastQuery = '';
   } catch {
     setStatus('Failed to load nutrition data', 'err');
   }
@@ -1309,6 +1352,15 @@ function setStatus(msg, type) {
   el.textContent = msg;
   el.className = 'search-status' + (type ? ' '+type : '');
 }
+
+function showDropdownLoading(q) {
+  const dd = document.getElementById('dropdown');
+  dd.innerHTML = `<div style="padding:12px 14px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:8px">
+    <span style="width:12px;height:12px;border:2px solid var(--surface3);border-top-color:var(--accent2);border-radius:50%;display:inline-block;animation:spin .7s linear infinite"></span>
+    Searching for "${esc(q)}"…
+  </div>`;
+  dd.classList.add('open');
+}
 function closeDropdown() {
   document.getElementById('dropdown').classList.remove('open');
 }
@@ -1329,7 +1381,11 @@ function showToast(msg, type='') {
 // ═══════════════════════════════════════════════════════════
 // KEYBOARD & OUTSIDE CLICKS
 // ═══════════════════════════════════════════════════════════
-document.getElementById('foodSearch').addEventListener('keydown', e => { if (e.key === 'Enter') searchFood(); });
+document.getElementById('foodSearch').addEventListener('input', onSearchInput);
+document.getElementById('foodSearch').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { clearTimeout(searchTimer); searchFood(); }
+  if (e.key === 'Escape') { closeDropdown(); }
+});
 document.addEventListener('click', e => {
   if (!e.target.closest('.search-wrap')) closeDropdown();
 });
