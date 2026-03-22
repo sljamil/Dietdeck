@@ -204,23 +204,30 @@ button{cursor:pointer}
 .plan-page{padding:20px}
 .plan-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .plan-title{font-family:'Lora',serif;font-size:1.1rem;font-weight:600;color:var(--text)}
-.btn-outline{padding:7px 14px;border:1.5px solid var(--border2);border-radius:var(--r);background:transparent;color:var(--text2);font-size:12px;font-weight:500;transition:all .2s}
-.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
-.week-tabs{display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
-.week-tab{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;color:var(--text2);border:1px solid var(--border);background:var(--surface);white-space:nowrap;transition:all .2s}
-.week-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.plan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.plan-week-label{font-size:12px;color:var(--text3);text-align:center;margin-bottom:12px;font-weight:500}
+.plan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
 .plan-day-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-sm)}
+.plan-day-card.today{border-color:var(--accent);border-width:2px}
+.plan-day-card.future{opacity:.7}
 .plan-day-head{padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
 .plan-day-name{font-size:13px;font-weight:600;color:var(--text)}
+.plan-day-meta{display:flex;align-items:center;gap:8px}
 .plan-day-kcal{font-size:11px;color:var(--text3)}
+.plan-day-kcal.logged{color:var(--accent);font-weight:500}
+.plan-day-kcal.over{color:var(--red);font-weight:500}
 .plan-meal{padding:8px 14px;border-bottom:1px solid var(--border)}
 .plan-meal:last-child{border-bottom:none}
-.plan-meal-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:4px;display:flex;align-items:center;gap:5px}
-.plan-food-item{font-size:12px;color:var(--text);margin-bottom:2px}
-.plan-food-macros{font-size:10px;color:var(--text3)}
-.plan-empty{font-size:12px;color:var(--text3);font-style:italic}
-.plan-add-food{font-size:11px;color:var(--accent);border:none;background:none;font-weight:500;margin-top:4px}
+.plan-meal-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.plan-food-item{font-size:12px;color:var(--text);margin-bottom:1px}
+.plan-food-macros{font-size:10px;color:var(--text3);margin-bottom:4px}
+.plan-empty{font-size:11px;color:var(--text3);font-style:italic}
+.plan-day-bar{height:4px;display:flex;margin:0 14px 8px;border-radius:2px;overflow:hidden;gap:1px}
+.plan-copy-btn{font-size:10px;color:var(--accent2);background:none;border:none;cursor:pointer;padding:2px 0;font-weight:500}
+.plan-no-data{text-align:center;padding:32px;color:var(--text3);font-size:13px;grid-column:1/-1}
+.plan-summary-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 16px;margin-bottom:16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.psb-item{text-align:center}
+.psb-val{font-size:16px;font-weight:600;color:var(--text)}
+.psb-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
 
 /* HISTORY PAGE */
 .history-page{padding:20px}
@@ -544,8 +551,12 @@ button{cursor:pointer}
     <div class="page" id="page-plan">
       <div class="plan-page">
         <div class="plan-header">
-          <div class="plan-title">Diet Plan</div>
-          <button class="btn-outline" onclick="showToast('Plan templates coming soon!','success')">+ New plan</button>
+          <div class="plan-title">Weekly Plan</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-outline" onclick="planGoToPrevWeek()">← Prev</button>
+            <button class="btn-outline" id="planTodayBtn" onclick="planGoToToday()">Today</button>
+            <button class="btn-outline" onclick="planGoToNextWeek()">Next →</button>
+          </div>
         </div>
         <div class="week-tabs" id="planWeekTabs"></div>
         <div class="plan-grid" id="planGrid"></div>
@@ -1178,33 +1189,91 @@ function removeFood(meal, idx) {
 }
 
 function updateFoodQty(meal, idx, newQty, newUnit) {
-  const item = todayLog[meal][idx];
+  const item = todayLog[meal]?.[idx];
   if (!item) return;
-  let grams = parseFloat(newQty) || 100;
-  // if unit-based, convert to grams
-  if (newUnit && newUnit !== 'g' && newUnit !== 'ml') {
-    const match = getPieceUnits(item.name);
-    if (match) {
-      const u = match.units.find(u => u.label === newUnit);
-      if (u) grams = u.g * grams;
-    }
+
+  const qty = parseFloat(newQty);
+  if (!qty || qty <= 0) return;
+
+  // Convert to grams
+  let grams;
+  const pieceInfo = getPieceUnits(item.name);
+  if (pieceInfo && newUnit && newUnit !== 'g' && newUnit !== 'ml') {
+    const u = pieceInfo.units.find(u => u.label === newUnit);
+    grams = u ? round1(u.g * qty) : round1(qty);
+  } else {
+    grams = round1(qty);
   }
-  // rescale nutrients from base100
-  const base = item.base100;
-  if (base) {
-    const s = grams / 100;
-    item.cal    = round1(base.cal * s);
-    item.prot   = round1(base.prot * s);
-    item.carb   = round1(base.carb * s);
-    item.fat    = round1(base.fat * s);
-    item.fiber  = round1(base.fiber * s);
-    item.sugar  = round1(base.sugar * s);
-    item.sodium = round1(base.sodium * s);
+
+  // Derive base100 if not already stored
+  let base = item.base100;
+  if (!base && item.qty && item.qty > 0) {
+    const f = 100 / item.qty;
+    base = {
+      cal:    round1((item.cal||0)    * f),
+      prot:   round1((item.prot||0)   * f),
+      carb:   round1((item.carb||0)   * f),
+      fat:    round1((item.fat||0)    * f),
+      fiber:  round1((item.fiber||0)  * f),
+      sugar:  round1((item.sugar||0)  * f),
+      sodium: round1((item.sodium||0) * f),
+    };
+    item.base100 = base;
   }
-  item.qty = round1(grams);
-  item.displayQty = newQty;
-  item.displayUnit = newUnit;
+  if (!base) return;
+
+  const s = grams / 100;
+  item.cal    = round1((base.cal||0)    * s);
+  item.prot   = round1((base.prot||0)   * s);
+  item.carb   = round1((base.carb||0)   * s);
+  item.fat    = round1((base.fat||0)    * s);
+  item.fiber  = round1((base.fiber||0)  * s);
+  item.sugar  = round1((base.sugar||0)  * s);
+  item.sodium = round1((base.sodium||0) * s);
+  item.qty         = grams;
+  item.displayQty  = qty;
+  item.displayUnit = newUnit || 'g';
+
   saveLog();
+
+  // ── Surgical DOM update — don't re-render the row, just patch the cells ──
+  // Find the row by its data attributes to avoid losing input focus
+  const rowId = `frow_${meal}_${idx}`;
+  const row = document.getElementById(rowId);
+  if (row) {
+    const cells = row.querySelectorAll('[data-cell]');
+    cells.forEach(c => {
+      switch(c.dataset.cell) {
+        case 'cal':    c.textContent = Math.round(item.cal); break;
+        case 'prot':   c.textContent = item.prot + 'g'; break;
+        case 'carb':   c.textContent = item.carb + 'g'; break;
+        case 'fat':    c.textContent = item.fat  + 'g'; break;
+        case 'fiber':  c.textContent = item.fiber + 'g'; break;
+        case 'sugar':  c.textContent = item.sugar + 'g'; break;
+        case 'sodium': c.textContent = Math.round(item.sodium); break;
+      }
+    });
+    // Update macro bar
+    const bar = document.getElementById(`fbar_${meal}_${idx}`);
+    if (bar) {
+      const barProt = (item.prot * 4) / (item.cal || 1) * 100;
+      const barCarb = (item.carb * 4) / (item.cal || 1) * 100;
+      const barFat  = (item.fat  * 9) / (item.cal || 1) * 100;
+      bar.children[0].style.flex = barProt || 0;
+      bar.children[1].style.flex = barCarb || 0;
+      bar.children[2].style.flex = barFat  || 0;
+    }
+    // Update meal header kcal
+    const mealKcal = document.getElementById(`mkcal_${meal}`);
+    if (mealKcal) {
+      const items = todayLog[meal] || [];
+      mealKcal.textContent = Math.round(items.reduce((s,x) => s+(x.cal||0), 0)) + ' kcal';
+    }
+  } else {
+    // fallback — row not found, do full re-render
+    renderMeals();
+  }
+
   renderTotals();
   renderSidePanel();
 }
@@ -1277,7 +1346,7 @@ function renderMeals() {
         <div class="meal-header-left">
           <span class="meal-dot" style="background:${color}"></span>
           <span class="meal-name">${esc(meal)}</span>
-          <span class="meal-kcal">${mealCal} kcal</span>
+          <span class="meal-kcal" id="mkcal_${esc(meal)}">${mealCal} kcal</span>
         </div>
         <button class="meal-add" onclick="openAddModal(null,'${esc(meal)}')">+ add</button>
       </div>
@@ -1288,9 +1357,9 @@ function renderMeals() {
     } else {
       items.forEach((item, idx) => {
         const extraCells = extra ? `
-          <div class="cell" style="color:#3B6D11">${item.fiber||0}g</div>
-          <div class="cell" style="color:#888">${item.sugar||0}g</div>
-          <div class="cell">${Math.round(item.sodium||0)}</div>
+          <div class="cell" style="color:#3B6D11" data-cell="fiber">${item.fiber||0}g</div>
+          <div class="cell" style="color:#888" data-cell="sugar">${item.sugar||0}g</div>
+          <div class="cell" data-cell="sodium">${Math.round(item.sodium||0)}</div>
         ` : '';
         const barProt = (item.prot * 4) / (item.cal || 1) * 100;
         const barCarb = (item.carb * 4) / (item.cal || 1) * 100;
@@ -1319,21 +1388,23 @@ function renderMeals() {
         }
 
         const row = document.createElement('div');
+        row.id = `frow_${meal}_${idx}`;
         row.className = 'food-row' + (extra ? ' expanded' : '');
         row.innerHTML = `
           <div class="food-name-cell">
             <div class="fn">${esc(item.name)}<span class="tag tag-${item.source==='ai'?'ai':'usda'}">${item.source==='ai'?'AI':'USDA'}</span></div>
           </div>
           <div class="cell">${qtyControl}</div>
-          <div class="cell cell-cal">${Math.round(item.cal||0)}</div>
-          <div class="cell" style="color:#2563a8">${item.prot||0}g</div>
-          <div class="cell" style="color:var(--accent)">${item.carb||0}g</div>
-          <div class="cell" style="color:var(--gold)">${item.fat||0}g</div>
+          <div class="cell cell-cal" data-cell="cal">${Math.round(item.cal||0)}</div>
+          <div class="cell" style="color:#2563a8" data-cell="prot">${item.prot||0}g</div>
+          <div class="cell" style="color:var(--accent)" data-cell="carb">${item.carb||0}g</div>
+          <div class="cell" style="color:var(--gold)" data-cell="fat">${item.fat||0}g</div>
           ${extraCells}
           <button class="del-btn" onclick="removeFood('${esc(meal)}',${idx})">×</button>
         `;
         sec.appendChild(row);
         const bar = document.createElement('div');
+        bar.id = `fbar_${meal}_${idx}`;
         bar.className = 'macro-bar';
         bar.innerHTML = `
           <div style="flex:${barProt||0};background:#2563a8;opacity:.5"></div>
@@ -1449,53 +1520,153 @@ function toggleMoreNutrients() {
 // ═══════════════════════════════════════════════════════════
 // PLAN PAGE
 // ═══════════════════════════════════════════════════════════
+let planWeekOffset = 0; // 0 = this week, -1 = last week, 1 = next week
+
+function planGoToPrevWeek() { planWeekOffset--; renderPlanPage(); }
+function planGoToNextWeek() { planWeekOffset++; renderPlanPage(); }
+function planGoToToday()    { planWeekOffset = 0; renderPlanPage(); }
+
+function getWeekDates(offset) {
+  const today = new Date();
+  const dayOfWeek = (today.getDay() + 6) % 7; // Mon=0
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - dayOfWeek + (offset * 7));
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
 function renderPlanPage() {
-  const weekTabs = document.getElementById('planWeekTabs');
-  weekTabs.innerHTML = ['This week','Next week'].map((w,i) =>
-    `<button class="week-tab${i===0?' active':''}" onclick="selectWeekTab(this)">${w}</button>`
-  ).join('');
-
   const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-  const grid = document.getElementById('planGrid');
-  grid.innerHTML = days.map(day => {
-    const today = new Date();
-    const dayOfWeek = (today.getDay() + 6) % 7;
-    const idx = days.indexOf(day);
-    const date = new Date(today);
-    date.setDate(today.getDate() - dayOfWeek + idx);
-    const key = date.toISOString().slice(0,10);
-    const log = history[key] || null;
-    const kcal = log ? Math.round(log.cal || 0) : null;
-    const isToday = idx === dayOfWeek;
+  const dates = getWeekDates(planWeekOffset);
+  const todayStr = new Date().toISOString().slice(0,10);
 
+  // Week label
+  const from = dates[0].toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  const to   = dates[6].toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const tabs = document.getElementById('planWeekTabs');
+  tabs.innerHTML = `<div class="plan-week-label">Week of ${from} – ${to}${planWeekOffset===0?' <span style="color:var(--accent);font-size:11px">(current week)</span>':''}</div>`;
+
+  // Weekly summary
+  let weekCal=0, weekProt=0, weekCarb=0, weekFat=0, loggedDays=0;
+  dates.forEach(d => {
+    const key = d.toISOString().slice(0,10);
+    const log = key === todayStr
+      ? (() => { const t=computeTotals(); return t.cal>0?t:null; })()
+      : history[key];
+    if (log && (log.cal||0) > 0) {
+      weekCal  += log.cal||0;
+      weekProt += log.prot||0;
+      weekCarb += log.carb||0;
+      weekFat  += log.fat||0;
+      loggedDays++;
+    }
+  });
+
+  const grid = document.getElementById('planGrid');
+
+  // Summary bar
+  let summaryHtml = '';
+  if (loggedDays > 0) {
+    summaryHtml = `<div class="plan-summary-bar" style="grid-column:1/-1">
+      <div class="psb-item"><div class="psb-val">${loggedDays}/7</div><div class="psb-lbl">Days logged</div></div>
+      <div style="width:1px;height:28px;background:var(--border)"></div>
+      <div class="psb-item"><div class="psb-val">${Math.round(weekCal/loggedDays)}</div><div class="psb-lbl">Avg kcal/day</div></div>
+      <div class="psb-item"><div class="psb-val" style="color:#2563a8">${(weekProt/loggedDays).toFixed(1)}g</div><div class="psb-lbl">Avg protein</div></div>
+      <div class="psb-item"><div class="psb-val" style="color:var(--accent)">${(weekCarb/loggedDays).toFixed(1)}g</div><div class="psb-lbl">Avg carbs</div></div>
+      <div class="psb-item"><div class="psb-val" style="color:var(--gold)">${(weekFat/loggedDays).toFixed(1)}g</div><div class="psb-lbl">Avg fat</div></div>
+      <div style="width:1px;height:28px;background:var(--border)"></div>
+      <div class="psb-item"><div class="psb-val">${Math.round(weekCal)}</div><div class="psb-lbl">Total kcal</div></div>
+    </div>`;
+  }
+
+  // Day cards
+  const cardsHtml = dates.map((date, i) => {
+    const key = date.toISOString().slice(0,10);
+    const isToday = key === todayStr;
+    const isFuture = date > new Date() && !isToday;
+    const dayName = days[i];
+    const dateLabel = date.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+
+    // Get log data — today uses live todayLog, past days use history
+    let logData = null;
+    if (isToday) {
+      const t = computeTotals();
+      if (t.cal > 0 || Object.values(todayLog).flat().length > 0) {
+        logData = { cal: t.cal, prot: t.prot, carb: t.carb, fat: t.fat, meals: todayLog };
+      }
+    } else {
+      logData = history[key] || null;
+    }
+
+    const kcal = logData ? Math.round(logData.cal || 0) : 0;
+    const overGoal = kcal > (goals.calories || 2000);
+    const kcalClass = !logData ? '' : overGoal ? 'over' : 'logged';
+    const kcalText = logData ? `${kcal} kcal${overGoal ? ' ↑' : ''}` : (isFuture ? 'Not yet' : 'Not logged');
+
+    // Macro bar
+    let barHtml = '';
+    if (logData && kcal > 0) {
+      const bp = ((logData.prot||0)*4)/kcal*100;
+      const bc = ((logData.carb||0)*4)/kcal*100;
+      const bf = ((logData.fat||0)*9) /kcal*100;
+      barHtml = `<div class="plan-day-bar">
+        <div style="flex:${bp};background:#2563a8;opacity:.6"></div>
+        <div style="flex:${bc};background:#2a5c45;opacity:.6"></div>
+        <div style="flex:${bf};background:#c8963a;opacity:.6"></div>
+      </div>`;
+    }
+
+    // Meal sections
+    const mealsToShow = userMeals;
     let mealsHtml = '';
-    MEALS.forEach(meal => {
-      const items = log?.meals?.[meal] || [];
-      const color = MEAL_COLORS[meal];
-      mealsHtml += `
-        <div class="plan-meal">
-          <div class="plan-meal-label">
-            <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block"></span>
-            ${meal}
-          </div>
-          ${items.length ? items.map(it =>
-            `<div class="plan-food-item">${esc(it.name)}</div>
-             <div class="plan-food-macros">${it.qty}g · ${Math.round(it.cal)} kcal · ${it.prot}g P · ${it.carb}g C</div>`
-          ).join('') : `<div class="plan-empty">No foods logged</div>`}
+    mealsToShow.forEach(meal => {
+      const items = logData?.meals?.[meal] || [];
+      const color = getMealColor(meal);
+      mealsHtml += `<div class="plan-meal">
+        <div class="plan-meal-label">
+          <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block"></span>
+          ${esc(meal)}
+          ${items.length ? `<span style="color:var(--text3);font-weight:400">(${items.length} item${items.length>1?'s':''})</span>` : ''}
         </div>
-      `;
+        ${items.length ? items.map(it => {
+          const dispQty = it.displayQty && it.displayUnit && it.displayUnit!=='g'
+            ? `${it.displayQty}× ${it.displayUnit}`
+            : `${Math.round(it.qty||0)}g`;
+          return `<div class="plan-food-item">${esc(it.name)}</div>
+                  <div class="plan-food-macros">${dispQty} · ${Math.round(it.cal||0)} kcal · P:${it.prot||0}g C:${it.carb||0}g F:${it.fat||0}g</div>`;
+        }).join('') : `<div class="plan-empty">${isFuture ? 'No plan set' : 'Nothing logged'}</div>`}
+        ${isToday ? `<button class="plan-copy-btn" onclick="showPage('today');document.getElementById('foodSearch').focus()">+ Add food →</button>` : ''}
+      </div>`;
     });
 
-    return `
-      <div class="plan-day-card" style="${isToday ? 'border-color:var(--accent);border-width:2px' : ''}">
-        <div class="plan-day-head">
-          <div class="plan-day-name">${day}${isToday ? ' <span style="font-size:10px;color:var(--accent)">(today)</span>' : ''}</div>
-          <div class="plan-day-kcal">${kcal !== null ? kcal + ' kcal' : 'No data'}</div>
+    // Progress ring mini
+    const pct = Math.min((kcal / (goals.calories||2000)) * 100, 100);
+    const miniRingColor = overGoal ? '#c0392b' : isToday ? '#2a5c45' : '#3d8b6e';
+
+    return `<div class="plan-day-card${isToday?' today':isFuture?' future':''}">
+      <div class="plan-day-head">
+        <div>
+          <div class="plan-day-name">${dayName}${isToday?' <span style="font-size:10px;color:var(--accent);font-weight:400">(today)</span>':''}</div>
+          <div style="font-size:10px;color:var(--text3)">${dateLabel}</div>
         </div>
-        ${mealsHtml}
+        <div class="plan-day-meta">
+          <svg width="32" height="32" viewBox="0 0 32 32">
+            <circle cx="16" cy="16" r="12" fill="none" stroke="var(--surface3)" stroke-width="3"/>
+            <circle cx="16" cy="16" r="12" fill="none" stroke="${miniRingColor}" stroke-width="3"
+              stroke-dasharray="${pct*0.754} 75.4" stroke-dashoffset="18.85" stroke-linecap="round"/>
+          </svg>
+          <span class="plan-day-kcal ${kcalClass}">${kcalText}</span>
+        </div>
       </div>
-    `;
+      ${barHtml}
+      ${mealsHtml}
+    </div>`;
   }).join('');
+
+  grid.innerHTML = summaryHtml + cardsHtml;
 }
 
 function selectWeekTab(el) {
