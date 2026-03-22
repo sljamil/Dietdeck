@@ -1,3 +1,4 @@
+// DietDeck — Groq AI nutrition proxy
 exports.handler = async (event) => {
   const headers = {
     'Content-Type': 'application/json',

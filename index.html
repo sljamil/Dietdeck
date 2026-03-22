@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NutriScan — Daily Nutrition Tracker</title>
+<title>DietDeck — Daily Nutrition Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet"/>
 <style>
 :root {
@@ -299,7 +299,7 @@ button{cursor:pointer}
 <!-- ═══════════════════════════════════════════ -->
 <div id="screen-auth" class="screen active">
   <div class="auth-box">
-    <div class="auth-logo">Nutri<span>Scan</span></div>
+    <div class="auth-logo">Diet<span>Deck</span></div>
     <div class="auth-sub">Track your daily nutrition, reach your goals</div>
     <div class="tab-row">
       <button class="tab-btn active" onclick="switchAuthTab('signin')">Sign in</button>
@@ -371,7 +371,7 @@ button{cursor:pointer}
 <div id="screen-app" class="screen">
   <!-- Top bar -->
   <div class="topbar">
-    <div class="topbar-logo">Nutri<span>Scan</span></div>
+    <div class="topbar-logo">Diet<span>Deck</span></div>
     <div class="topbar-nav">
       <button class="nav-item active" onclick="showPage('today')"><span>Today</span></button>
       <button class="nav-item" onclick="showPage('plan')"><span>Plan</span></button>
@@ -593,25 +593,25 @@ function todayKey() {
 
 function loadUserData() {
   if (!user) return;
-  const saved = LS.get('ns_' + user.id + '_goals');
+  const saved = LS.get('dd_' + user.id + '_goals');
   if (saved) goals = saved;
-  const log = LS.get('ns_' + user.id + '_log_' + todayKey());
+  const log = LS.get('dd_' + user.id + '_log_' + todayKey());
   if (log) todayLog = log;
   else todayLog = { Breakfast:[], Lunch:[], Dinner:[], Snacks:[] };
-  const hist = LS.get('ns_' + user.id + '_history');
+  const hist = LS.get('dd_' + user.id + '_history');
   if (hist) history = hist;
-  const prof = LS.get('ns_' + user.id + '_profile');
+  const prof = LS.get('dd_' + user.id + '_profile');
   if (prof) profile = prof;
+  else profile = { name: user.name || '', email: user.email || '' };
 }
 
 function saveLog() {
   if (!user) return;
-  LS.set('ns_' + user.id + '_log_' + todayKey(), todayLog);
-  // save to history
-  const allHistory = LS.get('ns_' + user.id + '_history') || {};
+  LS.set('dd_' + user.id + '_log_' + todayKey(), todayLog);
+  const allHistory = LS.get('dd_' + user.id + '_history') || {};
   const totals = computeTotals();
   allHistory[todayKey()] = { ...totals, meals: JSON.parse(JSON.stringify(todayLog)) };
-  LS.set('ns_' + user.id + '_history', allHistory);
+  LS.set('dd_' + user.id + '_history', allHistory);
   history = allHistory;
 }
 
@@ -644,43 +644,57 @@ function setAuthMsg(msg, type) {
   el.className = 'auth-msg' + (type ? ' '+type : '');
 }
 
+function hashPass(pass) {
+  let h = 0;
+  for (let i = 0; i < pass.length; i++) {
+    h = Math.imul(31, h) + pass.charCodeAt(i) | 0;
+  }
+  return 'h_' + Math.abs(h).toString(36) + '_' + pass.length;
+}
+
 function doRegister() {
   const name = document.getElementById('rg-name').value.trim();
   const email = document.getElementById('rg-email').value.trim().toLowerCase();
   const pass = document.getElementById('rg-pass').value;
   if (!name || !email || !pass) return setAuthMsg('Please fill all fields', 'error');
+  if (!email.includes('@')) return setAuthMsg('Please enter a valid email', 'error');
   if (pass.length < 6) return setAuthMsg('Password must be at least 6 characters', 'error');
-  const users = LS.get('ns_users') || {};
-  if (users[email]) return setAuthMsg('Email already registered', 'error');
+  const users = LS.get('dd_users') || {};
+  if (users[email]) return setAuthMsg('Email already registered — sign in instead', 'error');
   const uid = 'u_' + Date.now();
-  users[email] = { id: uid, name, email, passHash: btoa(pass) };
-  LS.set('ns_users', users);
-  user = users[email];
-  LS.set('ns_session', user);
+  const newUser = { id: uid, name, email, passHash: hashPass(pass) };
+  users[email] = newUser;
+  LS.set('dd_users', users);
+  user = newUser;
   profile = { name, email };
-  LS.set('ns_' + user.id + '_profile', profile);
-  setAuthMsg('Account created!', 'success');
-  setTimeout(() => showScreen('setup'), 600);
+  LS.set('dd_' + uid + '_profile', profile);
+  LS.set('dd_session', { id: uid, email, name });
+  setAuthMsg('Account created! Setting up your profile…', 'success');
+  setTimeout(() => showScreen('setup'), 700);
 }
 
 function doSignIn() {
   const email = document.getElementById('si-email').value.trim().toLowerCase();
   const pass = document.getElementById('si-pass').value;
   if (!email || !pass) return setAuthMsg('Please fill all fields', 'error');
-  const users = LS.get('ns_users') || {};
+  const users = LS.get('dd_users') || {};
   const u = users[email];
-  if (!u || u.passHash !== btoa(pass)) return setAuthMsg('Invalid email or password', 'error');
+  if (!u) return setAuthMsg('No account found with that email', 'error');
+  if (u.passHash !== hashPass(pass)) return setAuthMsg('Incorrect password', 'error');
   user = u;
-  LS.set('ns_session', user);
+  LS.set('dd_session', { id: u.id, email: u.email, name: u.name });
   loadUserData();
-  const hasGoals = LS.get('ns_' + user.id + '_goals');
+  const hasGoals = LS.get('dd_' + user.id + '_goals');
   showScreen(hasGoals ? 'app' : 'setup');
 }
 
 function doLogout() {
-  LS.del('ns_session');
+  LS.del('dd_session');
   user = null;
+  profile = { name:'', email:'' };
+  goals = { calories:2000, prot:30, carb:45, fat:25 };
   todayLog = { Breakfast:[], Lunch:[], Dinner:[], Snacks:[] };
+  history = {};
   showScreen('auth');
 }
 
@@ -693,13 +707,13 @@ function saveSetup() {
   };
   const sum = goals.prot + goals.carb + goals.fat;
   if (sum !== 100) return showToast('Macros must add up to 100%', 'error');
-  LS.set('ns_' + user.id + '_goals', goals);
+  LS.set('dd_' + user.id + '_goals', goals);
   showScreen('app');
 }
 
 function saveProfile() {
   profile.name = document.getElementById('prof-name').value.trim();
-  LS.set('ns_' + user.id + '_profile', profile);
+  LS.set('dd_' + user.id + '_profile', profile);
   document.getElementById('avatar-btn').textContent = initials(profile.name);
   showToast('Profile saved', 'success');
 }
@@ -709,7 +723,7 @@ function saveGoals() {
   goals.prot = parseInt(document.getElementById('prof-prot').value) || 30;
   goals.carb = parseInt(document.getElementById('prof-carb').value) || 45;
   goals.fat = parseInt(document.getElementById('prof-fat').value) || 25;
-  LS.set('ns_' + user.id + '_goals', goals);
+  LS.set('dd_' + user.id + '_goals', goals);
   renderAll();
   showToast('Goals updated', 'success');
 }
@@ -1271,11 +1285,18 @@ document.addEventListener('click', e => {
 // AUTO-LOGIN ON LOAD
 // ═══════════════════════════════════════════════════════════
 (function init() {
-  const session = LS.get('ns_session');
+  const session = LS.get('dd_session');
   if (session) {
-    user = session;
-    loadUserData();
-    showScreen('app');
+    const users = LS.get('dd_users') || {};
+    const fullUser = users[session.email];
+    if (fullUser) {
+      user = fullUser;
+      loadUserData();
+      const hasGoals = LS.get('dd_' + user.id + '_goals');
+      showScreen(hasGoals ? 'app' : 'setup');
+    } else {
+      LS.del('dd_session');
+    }
   }
 })();
 </script>
