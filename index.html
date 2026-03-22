@@ -550,7 +550,7 @@ button{cursor:pointer}
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const USDA_KEY = 'DEMO_KEY';
+const USDA_KEY = null; // key is now server-side in USDA_API_KEY env var
 const MEALS = ['Breakfast','Lunch','Dinner','Snacks'];
 const MEAL_COLORS = {'Breakfast':'#c8963a','Lunch':'#2a5c45','Dinner':'#534AB7','Snacks':'#D4537E'};
 
@@ -797,10 +797,12 @@ async function searchFood(q) {
     return;
   }
 
-  setStatus('Searching…', '');
   try {
-    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&dataType=Foundation,SR%20Legacy&pageSize=10&api_key=${USDA_KEY}`;
-    const res = await fetch(url);
+    const res = await fetch('/.netlify/functions/usda-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: q }),
+    });
     const data = await res.json();
     const foods = data.foods || [];
     searchCache[q.toLowerCase()] = foods;
@@ -853,17 +855,20 @@ async function pickFood(fdcId, name) {
   setStatus('Adding…', '');
   const qty = parseFloat(document.getElementById('qty').value) || 100;
   try {
-    const cacheKey = `fdc_${fdcId}`;
-    let food;
+    const cacheKey = `fdc_${fdcId}_${qty}`;
+    let nutrients;
     if (searchCache[cacheKey]) {
-      food = searchCache[cacheKey];
+      nutrients = searchCache[cacheKey];
     } else {
-      const res = await fetch(`https://api.nal.usda.gov/fdc/v1/food/${fdcId}?api_key=${USDA_KEY}`);
-      food = await res.json();
-      searchCache[cacheKey] = food;
+      const res = await fetch('/.netlify/functions/usda-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fdcId, grams: qty }),
+      });
+      nutrients = await res.json();
+      searchCache[cacheKey] = nutrients;
     }
-    const n = extractNutrients(food.foodNutrients, qty);
-    addToMeal({ name, qty, ...n, source:'usda' }, pendingMeal);
+    addToMeal({ name, qty, ...nutrients, source: 'usda' }, pendingMeal);
     setStatus(`✓ Added ${name} (${qty}g)`, 'ok');
     document.getElementById('foodSearch').value = '';
     lastQuery = '';
