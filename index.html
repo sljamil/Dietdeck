@@ -38,10 +38,12 @@ button{cursor:pointer}
 /* ── SCREENS ── */
 .screen{display:none;min-height:100vh}
 .screen.active{display:block}
+#screen-auth.active{display:flex}
+#screen-setup.active{display:flex}
+#screen-app.active{display:flex}
 
 /* ── AUTH ── */
-#screen-auth{display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg)}
-#screen-auth.active{display:flex}
+#screen-auth{align-items:center;justify-content:center;padding:24px;background:var(--bg)}
 .auth-box{background:var(--surface);border-radius:var(--r-lg);border:1px solid var(--border);padding:36px 32px;width:100%;max-width:380px;box-shadow:var(--shadow)}
 .auth-logo{font-family:'Lora',serif;font-size:1.7rem;font-weight:600;color:var(--accent);text-align:center;margin-bottom:4px}
 .auth-logo span{color:var(--gold)}
@@ -60,8 +62,7 @@ button{cursor:pointer}
 .auth-msg.success{color:var(--accent2)}
 
 /* ── SETUP ── */
-#screen-setup{background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
-#screen-setup.active{display:flex}
+#screen-setup{background:var(--bg);align-items:center;justify-content:center;padding:24px}
 .setup-box{background:var(--surface);border-radius:var(--r-lg);border:1px solid var(--border);padding:32px;width:100%;max-width:440px;box-shadow:var(--shadow)}
 .setup-title{font-family:'Lora',serif;font-size:1.25rem;font-weight:600;color:var(--text);margin-bottom:4px}
 .setup-sub{font-size:13px;color:var(--text3);margin-bottom:24px}
@@ -82,8 +83,7 @@ button{cursor:pointer}
 .field-inline span{font-size:13px;color:var(--text3)}
 
 /* ── APP SHELL ── */
-#screen-app{display:none;flex-direction:column;min-height:100vh}
-#screen-app.active{display:flex}
+#screen-app{flex-direction:column;min-height:100vh}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:50}
 .topbar-logo{font-family:'Lora',serif;font-size:1.2rem;font-weight:600;color:var(--accent)}
 .topbar-logo span{color:var(--gold)}
@@ -317,6 +317,15 @@ button{cursor:pointer}
       <button class="btn-primary" onclick="doRegister()">Create account</button>
     </div>
     <div class="auth-msg" id="auth-msg"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin:16px 0 4px">
+      <div style="flex:1;height:1px;background:var(--border2)"></div>
+      <span style="font-size:12px;color:var(--text3)">or</span>
+      <div style="flex:1;height:1px;background:var(--border2)"></div>
+    </div>
+    <button onclick="continueAsGuest()" style="width:100%;padding:10px;background:transparent;border:1.5px solid var(--border2);border-radius:var(--r);font-size:13px;font-weight:500;color:var(--text2);transition:all .2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">
+      Continue as guest
+    </button>
+    <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">Guest data is saved on this device only — register to save across devices</div>
   </div>
 </div>
 
@@ -514,31 +523,7 @@ button{cursor:pointer}
     </div>
 
     <!-- ── PROFILE PAGE ── -->
-    <div class="page" id="page-profile">
-      <div class="profile-page">
-        <div class="profile-title">Profile &amp; Settings</div>
-        <div class="profile-card">
-          <h3>Account</h3>
-          <div class="profile-field"><label>Name</label><input type="text" id="prof-name"/></div>
-          <div class="profile-field"><label>Email</label><input type="email" id="prof-email" disabled style="opacity:.6"/></div>
-          <button class="btn-save" onclick="saveProfile()">Save changes</button>
-        </div>
-        <div class="profile-card">
-          <h3>Nutrition goals</h3>
-          <div class="profile-field"><label>Daily calorie goal (kcal)</label><input type="number" id="prof-calories"/></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-            <div class="profile-field"><label style="color:#2563a8">Protein %</label><input type="number" id="prof-prot"/></div>
-            <div class="profile-field"><label style="color:var(--accent)">Carbs %</label><input type="number" id="prof-carb"/></div>
-            <div class="profile-field"><label style="color:var(--gold)">Fat %</label><input type="number" id="prof-fat"/></div>
-          </div>
-          <button class="btn-save" onclick="saveGoals()">Update goals</button>
-        </div>
-        <div class="profile-card">
-          <h3>Account actions</h3>
-          <button class="btn-logout" onclick="doLogout()">Sign out</button>
-        </div>
-      </div>
-    </div>
+    <div class="page" id="page-profile"></div>
 
   </div>
 </div>
@@ -593,25 +578,29 @@ function todayKey() {
 
 function loadUserData() {
   if (!user) return;
-  const saved = LS.get('dd_' + user.id + '_goals');
+  const prefix = user.isGuest ? 'dd_guest' : 'dd_' + user.id;
+  const saved = LS.get(prefix + '_goals');
   if (saved) goals = saved;
-  const log = LS.get('dd_' + user.id + '_log_' + todayKey());
+  const log = LS.get(prefix + '_log_' + todayKey());
   if (log) todayLog = log;
   else todayLog = { Breakfast:[], Lunch:[], Dinner:[], Snacks:[] };
-  const hist = LS.get('dd_' + user.id + '_history');
+  const hist = LS.get(prefix + '_history');
   if (hist) history = hist;
-  const prof = LS.get('dd_' + user.id + '_profile');
-  if (prof) profile = prof;
-  else profile = { name: user.name || '', email: user.email || '' };
+  if (!user.isGuest) {
+    const prof = LS.get(prefix + '_profile');
+    if (prof) profile = prof;
+    else profile = { name: user.name || '', email: user.email || '' };
+  }
 }
 
 function saveLog() {
   if (!user) return;
-  LS.set('dd_' + user.id + '_log_' + todayKey(), todayLog);
-  const allHistory = LS.get('dd_' + user.id + '_history') || {};
+  const prefix = user.isGuest ? 'dd_guest' : 'dd_' + user.id;
+  LS.set(prefix + '_log_' + todayKey(), todayLog);
+  const allHistory = LS.get(prefix + '_history') || {};
   const totals = computeTotals();
   allHistory[todayKey()] = { ...totals, meals: JSON.parse(JSON.stringify(todayLog)) };
-  LS.set('dd_' + user.id + '_history', allHistory);
+  LS.set(prefix + '_history', allHistory);
   history = allHistory;
 }
 
@@ -642,6 +631,20 @@ function setAuthMsg(msg, type) {
   const el = document.getElementById('auth-msg');
   el.textContent = msg;
   el.className = 'auth-msg' + (type ? ' '+type : '');
+}
+
+function continueAsGuest() {
+  user = { id: 'guest', name: 'Guest', email: '', isGuest: true };
+  profile = { name: 'Guest', email: '' };
+  const savedGoals = LS.get('dd_guest_goals');
+  if (savedGoals) goals = savedGoals;
+  const log = LS.get('dd_guest_log_' + todayKey());
+  if (log) todayLog = log;
+  else todayLog = { Breakfast:[], Lunch:[], Dinner:[], Snacks:[] };
+  const hist = LS.get('dd_guest_history');
+  if (hist) history = hist;
+  LS.set('dd_session', { id: 'guest', isGuest: true });
+  showScreen('app');
 }
 
 function hashPass(pass) {
@@ -707,7 +710,8 @@ function saveSetup() {
   };
   const sum = goals.prot + goals.carb + goals.fat;
   if (sum !== 100) return showToast('Macros must add up to 100%', 'error');
-  LS.set('dd_' + user.id + '_goals', goals);
+  const prefix = user.isGuest ? 'dd_guest' : 'dd_' + user.id;
+  LS.set(prefix + '_goals', goals);
   showScreen('app');
 }
 
@@ -723,7 +727,8 @@ function saveGoals() {
   goals.prot = parseInt(document.getElementById('prof-prot').value) || 30;
   goals.carb = parseInt(document.getElementById('prof-carb').value) || 45;
   goals.fat = parseInt(document.getElementById('prof-fat').value) || 25;
-  LS.set('dd_' + user.id + '_goals', goals);
+  const prefix = user.isGuest ? 'dd_guest' : 'dd_' + user.id;
+  LS.set(prefix + '_goals', goals);
   renderAll();
   showToast('Goals updated', 'success');
 }
@@ -752,7 +757,14 @@ function showPage(name) {
 function initApp() {
   const now = new Date();
   document.getElementById('date-pill').textContent = now.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
-  document.getElementById('avatar-btn').textContent = initials(profile.name || user?.name || '?');
+  const avatarBtn = document.getElementById('avatar-btn');
+  if (user && user.isGuest) {
+    avatarBtn.textContent = '?';
+    avatarBtn.title = 'Guest — click to register';
+  } else {
+    avatarBtn.textContent = initials(profile.name || user?.name || '?');
+    avatarBtn.title = profile.name || '';
+  }
   renderAll();
   renderWeekDots();
 }
@@ -1219,12 +1231,53 @@ function renderHistoryPage() {
 // PROFILE PAGE
 // ═══════════════════════════════════════════════════════════
 function renderProfilePage() {
-  document.getElementById('prof-name').value = profile.name || '';
-  document.getElementById('prof-email').value = profile.email || user?.email || '';
-  document.getElementById('prof-calories').value = goals.calories;
-  document.getElementById('prof-prot').value = goals.prot;
-  document.getElementById('prof-carb').value = goals.carb;
-  document.getElementById('prof-fat').value = goals.fat;
+  const pg = document.getElementById('page-profile');
+  if (user && user.isGuest) {
+    pg.innerHTML = `<div class="profile-page">
+      <div class="profile-title">Profile</div>
+      <div class="profile-card" style="text-align:center;padding:28px">
+        <div style="font-size:40px;margin-bottom:12px">👤</div>
+        <div style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:6px">You're browsing as a guest</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:20px;line-height:1.6">Your data is saved on this device only.<br>Create a free account to save across devices and track your diet history.</div>
+        <button class="btn-primary" style="width:auto;padding:10px 28px;margin-bottom:10px" onclick="doLogout()">Create an account</button>
+        <div style="font-size:12px;color:var(--text3)">Takes 30 seconds — no credit card</div>
+      </div>
+      <div class="profile-card">
+        <h3>Nutrition goals</h3>
+        <div class="profile-field"><label>Daily calorie goal (kcal)</label><input type="number" id="prof-calories" value="${goals.calories}"/></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+          <div class="profile-field"><label style="color:#2563a8">Protein %</label><input type="number" id="prof-prot" value="${goals.prot}"/></div>
+          <div class="profile-field"><label style="color:var(--accent)">Carbs %</label><input type="number" id="prof-carb" value="${goals.carb}"/></div>
+          <div class="profile-field"><label style="color:var(--gold)">Fat %</label><input type="number" id="prof-fat" value="${goals.fat}"/></div>
+        </div>
+        <button class="btn-save" onclick="saveGoals()">Update goals</button>
+      </div>
+    </div>`;
+    return;
+  }
+  pg.innerHTML = `<div class="profile-page">
+    <div class="profile-title">Profile &amp; Settings</div>
+    <div class="profile-card">
+      <h3>Account</h3>
+      <div class="profile-field"><label>Name</label><input type="text" id="prof-name" value="${esc(profile.name||'')}"/></div>
+      <div class="profile-field"><label>Email</label><input type="email" id="prof-email" value="${esc(profile.email||user?.email||'')}" disabled style="opacity:.6"/></div>
+      <button class="btn-save" onclick="saveProfile()">Save changes</button>
+    </div>
+    <div class="profile-card">
+      <h3>Nutrition goals</h3>
+      <div class="profile-field"><label>Daily calorie goal (kcal)</label><input type="number" id="prof-calories" value="${goals.calories}"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="profile-field"><label style="color:#2563a8">Protein %</label><input type="number" id="prof-prot" value="${goals.prot}"/></div>
+        <div class="profile-field"><label style="color:var(--accent)">Carbs %</label><input type="number" id="prof-carb" value="${goals.carb}"/></div>
+        <div class="profile-field"><label style="color:var(--gold)">Fat %</label><input type="number" id="prof-fat" value="${goals.fat}"/></div>
+      </div>
+      <button class="btn-save" onclick="saveGoals()">Update goals</button>
+    </div>
+    <div class="profile-card">
+      <h3>Account actions</h3>
+      <button class="btn-logout" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1287,6 +1340,13 @@ document.addEventListener('click', e => {
 (function init() {
   const session = LS.get('dd_session');
   if (session) {
+    if (session.isGuest) {
+      user = { id: 'guest', name: 'Guest', email: '', isGuest: true };
+      profile = { name: 'Guest', email: '' };
+      loadUserData();
+      showScreen('app');
+      return;
+    }
     const users = LS.get('dd_users') || {};
     const fullUser = users[session.email];
     if (fullUser) {
