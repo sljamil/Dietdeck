@@ -398,25 +398,25 @@ button{cursor:pointer}
       <div class="goal-opt" onclick="selectGoal(this,'gain')">Gain muscle</div>
     </div>
 
-    <div class="field" style="margin-bottom:8px"><label style="font-size:12px;color:var(--text2);font-weight:500;display:block;margin-bottom:8px">Macro targets (% of calories)</label></div>
+    <div class="field" style="margin-bottom:8px"><label style="font-size:12px;color:var(--text2);font-weight:500;display:block;margin-bottom:8px">Daily macro targets</label></div>
     <div class="macro-row">
       <div class="macro-input">
         <label style="color:#2563a8">Protein</label>
-        <input type="number" id="setup-prot" value="30" min="5" max="70" oninput="updateMacroSum()"/>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px">%</div>
+        <input type="number" id="setup-prot" value="150" min="10" max="500" oninput="updateMacroHint()"/>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">grams / day</div>
       </div>
       <div class="macro-input">
         <label style="color:var(--accent)">Carbs</label>
-        <input type="number" id="setup-carb" value="45" min="5" max="80" oninput="updateMacroSum()"/>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px">%</div>
+        <input type="number" id="setup-carb" value="200" min="10" max="700" oninput="updateMacroHint()"/>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">grams / day</div>
       </div>
       <div class="macro-input">
         <label style="color:var(--gold)">Fat</label>
-        <input type="number" id="setup-fat" value="25" min="5" max="60" oninput="updateMacroSum()"/>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px">%</div>
+        <input type="number" id="setup-fat" value="65" min="5" max="300" oninput="updateMacroHint()"/>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">grams / day</div>
       </div>
     </div>
-    <div class="macro-sum">Total: <span id="macro-sum-val">100</span>% <span id="macro-sum-warn" style="color:var(--red)"></span></div>
+    <div style="font-size:11px;color:var(--text3);text-align:center;margin-bottom:16px" id="macro-cal-hint">≈ 2005 kcal from macros</div>
 
     <button class="btn-primary" onclick="saveSetup()">Save &amp; start tracking</button>
   </div>
@@ -643,7 +643,7 @@ const PIECE_FOODS = {
 
 let user = null;
 let profile = { name:'', email:'' };
-let goals = { calories:2000, prot:30, carb:45, fat:25 };
+let goals = { calories:2000, prot:150, carb:200, fat:65 }; // grams per day
 let userMeals = ['Breakfast','Lunch','Dinner','Snacks']; // customisable per user
 let todayLog = {};
 let history = {};
@@ -806,7 +806,7 @@ function doLogout() {
   LS.del('dd_session');
   user = null;
   profile = { name:'', email:'' };
-  goals = { calories:2000, prot:30, carb:45, fat:25 };
+  goals = { calories:2000, prot:150, carb:200, fat:65 };
   todayLog = { Breakfast:[], Lunch:[], Dinner:[], Snacks:[] };
   history = {};
   showScreen('auth');
@@ -815,12 +815,10 @@ function doLogout() {
 function saveSetup() {
   goals = {
     calories: parseInt(document.getElementById('setup-calories').value) || 2000,
-    prot: parseInt(document.getElementById('setup-prot').value) || 30,
-    carb: parseInt(document.getElementById('setup-carb').value) || 45,
-    fat: parseInt(document.getElementById('setup-fat').value) || 25,
+    prot: parseInt(document.getElementById('setup-prot').value) || 150,
+    carb: parseInt(document.getElementById('setup-carb').value) || 200,
+    fat:  parseInt(document.getElementById('setup-fat').value)  || 65,
   };
-  const sum = goals.prot + goals.carb + goals.fat;
-  if (sum !== 100) return showToast('Macros must add up to 100%', 'error');
   const prefix = user.isGuest ? 'dd_guest' : 'dd_' + user.id;
   LS.set(prefix + '_goals', goals);
   showScreen('app');
@@ -835,9 +833,9 @@ function saveProfile() {
 
 function saveGoals() {
   goals.calories = parseInt(document.getElementById('prof-calories').value) || 2000;
-  goals.prot = parseInt(document.getElementById('prof-prot').value) || 30;
-  goals.carb = parseInt(document.getElementById('prof-carb').value) || 45;
-  goals.fat = parseInt(document.getElementById('prof-fat').value) || 25;
+  goals.prot     = parseInt(document.getElementById('prof-prot').value)     || 150;
+  goals.carb     = parseInt(document.getElementById('prof-carb').value)     || 200;
+  goals.fat      = parseInt(document.getElementById('prof-fat').value)      || 65;
   const prefix = user.isGuest ? 'dd_guest' : 'dd_' + user.id;
   LS.set(prefix + '_goals', goals);
   renderAll();
@@ -1450,10 +1448,10 @@ function renderTotals() {
 
 function renderSidePanel() {
   const t = computeTotals();
-  const calGoal = goals.calories || 2000;
-  const protGoal = Math.round(calGoal * goals.prot / 100 / 4);
-  const carbGoal = Math.round(calGoal * goals.carb / 100 / 4);
-  const fatGoal  = Math.round(calGoal * goals.fat  / 100 / 9);
+  const calGoal  = goals.calories || 2000;
+  const protGoal = goals.prot || 150;
+  const carbGoal = goals.carb || 200;
+  const fatGoal  = goals.fat  || 65;
 
   // Ring
   const pct = Math.min(t.cal / calGoal, 1);
@@ -1738,10 +1736,10 @@ function renderProfilePage() {
       <div class="profile-card">
         <h3>Nutrition goals</h3>
         <div class="profile-field"><label>Daily calorie goal (kcal)</label><input type="number" id="prof-calories" value="${goals.calories}"/></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-          <div class="profile-field"><label style="color:#2563a8">Protein %</label><input type="number" id="prof-prot" value="${goals.prot}"/></div>
-          <div class="profile-field"><label style="color:var(--accent)">Carbs %</label><input type="number" id="prof-carb" value="${goals.carb}"/></div>
-          <div class="profile-field"><label style="color:var(--gold)">Fat %</label><input type="number" id="prof-fat" value="${goals.fat}"/></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px">
+          <div class="profile-field"><label style="color:#2563a8">Protein (g/day)</label><input type="number" id="prof-prot" value="${goals.prot}"/></div>
+          <div class="profile-field"><label style="color:var(--accent)">Carbs (g/day)</label><input type="number" id="prof-carb" value="${goals.carb}"/></div>
+          <div class="profile-field"><label style="color:var(--gold)">Fat (g/day)</label><input type="number" id="prof-fat" value="${goals.fat}"/></div>
         </div>
         <button class="btn-save" onclick="saveGoals()">Update goals</button>
       </div>
@@ -1788,11 +1786,12 @@ function renderProfilePage() {
     <div class="profile-card">
       <h3>Nutrition goals</h3>
       <div class="profile-field"><label>Daily calorie goal (kcal)</label><input type="number" id="prof-calories" value="${goals.calories}"/></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-        <div class="profile-field"><label style="color:#2563a8">Protein %</label><input type="number" id="prof-prot" value="${goals.prot}"/></div>
-        <div class="profile-field"><label style="color:var(--accent)">Carbs %</label><input type="number" id="prof-carb" value="${goals.carb}"/></div>
-        <div class="profile-field"><label style="color:var(--gold)">Fat %</label><input type="number" id="prof-fat" value="${goals.fat}"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px">
+        <div class="profile-field"><label style="color:#2563a8">Protein (g/day)</label><input type="number" id="prof-prot" value="${goals.prot}" oninput="updateProfMacroHint()"/></div>
+        <div class="profile-field"><label style="color:var(--accent)">Carbs (g/day)</label><input type="number" id="prof-carb" value="${goals.carb}" oninput="updateProfMacroHint()"/></div>
+        <div class="profile-field"><label style="color:var(--gold)">Fat (g/day)</label><input type="number" id="prof-fat" value="${goals.fat}" oninput="updateProfMacroHint()"/></div>
       </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px" id="prof-macro-hint">≈ ${Math.round((goals.prot||0)*4 + (goals.carb||0)*4 + (goals.fat||0)*9)} kcal from macros</div>
       <button class="btn-save" onclick="saveGoals()">Update goals</button>
     </div>
 
@@ -1834,17 +1833,29 @@ function selectGoal(el, val) {
   document.querySelectorAll('.goal-opt').forEach(o => o.classList.remove('sel'));
   el.classList.add('sel');
   selectedGoal = val;
-  if (val === 'lose') { document.getElementById('setup-prot').value=30; document.getElementById('setup-carb').value=40; document.getElementById('setup-fat').value=30; }
-  if (val === 'maintain') { document.getElementById('setup-prot').value=25; document.getElementById('setup-carb').value=50; document.getElementById('setup-fat').value=25; }
-  if (val === 'gain') { document.getElementById('setup-prot').value=35; document.getElementById('setup-carb').value=45; document.getElementById('setup-fat').value=20; }
-  updateMacroSum();
+  // Presets in grams based on a ~2000 kcal day
+  if (val === 'lose')     { document.getElementById('setup-prot').value=160; document.getElementById('setup-carb').value=150; document.getElementById('setup-fat').value=55; }
+  if (val === 'maintain') { document.getElementById('setup-prot').value=150; document.getElementById('setup-carb').value=200; document.getElementById('setup-fat').value=65; }
+  if (val === 'gain')     { document.getElementById('setup-prot').value=180; document.getElementById('setup-carb').value=250; document.getElementById('setup-fat').value=60; }
+  updateMacroHint();
 }
-function updateMacroSum() {
-  const s = (+document.getElementById('setup-prot').value || 0) +
-            (+document.getElementById('setup-carb').value || 0) +
-            (+document.getElementById('setup-fat').value || 0);
-  document.getElementById('macro-sum-val').textContent = s;
-  document.getElementById('macro-sum-warn').textContent = s !== 100 ? '(must equal 100%)' : '';
+
+function updateMacroHint() {
+  const p = +document.getElementById('setup-prot').value || 0;
+  const c = +document.getElementById('setup-carb').value || 0;
+  const f = +document.getElementById('setup-fat').value  || 0;
+  const kcal = Math.round(p * 4 + c * 4 + f * 9);
+  const hint = document.getElementById('macro-cal-hint');
+  if (hint) hint.textContent = `≈ ${kcal} kcal from macros`;
+}
+
+function updateProfMacroHint() {
+  const p = +document.getElementById('prof-prot')?.value || 0;
+  const c = +document.getElementById('prof-carb')?.value || 0;
+  const f = +document.getElementById('prof-fat')?.value  || 0;
+  const kcal = Math.round(p * 4 + c * 4 + f * 9);
+  const hint = document.getElementById('prof-macro-hint');
+  if (hint) hint.textContent = `≈ ${kcal} kcal from macros`;
 }
 
 // ═══════════════════════════════════════════════════════════
