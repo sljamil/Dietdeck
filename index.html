@@ -291,6 +291,44 @@ button{cursor:pointer}
   .col-heads .ch:nth-child(n+4),.food-row .cell:nth-child(n+4){display:none}
   .col-heads,.food-row,.totals-bar{grid-template-columns:1fr 48px 52px 18px}
 }
+
+/* qty per row */
+.qty-row-wrap{display:flex;align-items:center;gap:3px}
+.qty-row-input{width:48px;padding:3px 4px;border:1px solid var(--border2);border-radius:6px;font-size:11px;text-align:center;background:var(--surface2);color:var(--text);outline:none}
+.qty-row-input:focus{border-color:var(--accent2)}
+.qty-row-unit{font-size:10px;color:var(--text3)}
+
+/* add-to-meal picker modal */
+.add-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:200;align-items:center;justify-content:center;padding:16px}
+.add-modal-bg.open{display:flex}
+.add-modal{background:var(--surface);border-radius:var(--r-lg);padding:22px;max-width:380px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.15);animation:slideUp .2s ease}
+.add-modal-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px;font-family:'Lora',serif}
+.add-modal-food{font-size:12px;color:var(--text3);margin-bottom:16px}
+.add-section-label{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.meal-pick-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+.meal-pick-btn{display:flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid var(--border2);border-radius:20px;font-size:12px;font-weight:500;color:var(--text2);background:var(--surface2);cursor:pointer;transition:all .18s}
+.meal-pick-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+.meal-pick-btn.sel{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+.meal-dot-sm{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.qty-pick-row{display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:var(--r);padding:10px 12px;margin-bottom:16px}
+.qty-pick-label{font-size:12px;color:var(--text2);flex:1}
+.qty-pick-input{width:68px;padding:6px 8px;border:1px solid var(--border2);border-radius:8px;text-align:center;font-size:15px;font-weight:500;outline:none;background:var(--surface)}
+.qty-pick-input:focus{border-color:var(--accent2);background:var(--surface)}
+.qty-pick-unit-sel{padding:5px 8px;border:1px solid var(--border2);border-radius:8px;font-size:12px;background:var(--surface);color:var(--text);outline:none;cursor:pointer}
+.add-modal-btns{display:flex;gap:8px;justify-content:flex-end}
+.btn-confirm{padding:9px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:500;transition:background .2s}
+.btn-confirm:hover{background:var(--accent2)}
+
+/* custom meals manager in profile */
+.meal-chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.meal-chip{display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border2);border-radius:20px;font-size:12px;font-weight:500;color:var(--text2);background:var(--surface2);cursor:pointer;transition:all .2s}
+.meal-chip.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
+.meal-chip-del{font-size:14px;color:var(--text3);line-height:1;background:none;border:none;cursor:pointer;padding:0 1px;margin-left:2px}
+.meal-chip-del:hover{color:var(--red)}
+.add-meal-row{display:flex;gap:8px;margin-top:4px}
+.add-meal-input{flex:1;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:13px;outline:none;background:var(--surface2)}
+.add-meal-input:focus{border-color:var(--accent2)}
+.add-meal-btn{padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:500}
 </style>
 </head>
 <body>
@@ -409,7 +447,6 @@ button{cursor:pointer}
                 <span class="search-icon">⌕</span>
                 <input class="search-input" id="foodSearch" placeholder="Type to search food… (e.g. banana, rice, dal)" autocomplete="off"/>
               </div>
-              <input class="qty-input" id="qty" type="number" value="100" min="1" max="9999" title="Grams"/>
               <button class="btn-search" onclick="searchFood()">Search</button>
             </div>
             <div class="search-status" id="searchStatus"></div>
@@ -529,6 +566,26 @@ button{cursor:pointer}
   </div>
 </div>
 
+<!-- Add-to-meal picker modal -->
+<div class="add-modal-bg" id="addModal">
+  <div class="add-modal">
+    <div class="add-modal-title">Add to meal</div>
+    <div class="add-modal-food" id="addModalFood"></div>
+    <div class="add-section-label">Choose section</div>
+    <div class="meal-pick-grid" id="mealPickGrid"></div>
+    <div class="add-section-label">Quantity</div>
+    <div class="qty-pick-row">
+      <span class="qty-pick-label" id="qtyPickLabel">Amount</span>
+      <input class="qty-pick-input" id="qtyPickInput" type="number" value="1" min="0.1" step="0.1"/>
+      <select class="qty-pick-unit-sel" id="qtyPickUnit" onchange="onUnitChange()"></select>
+    </div>
+    <div class="add-modal-btns">
+      <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+      <button class="btn-confirm" onclick="confirmAdd()">Add food</button>
+    </div>
+  </div>
+</div>
+
 <!-- AI Modal -->
 <div class="modal-bg" id="aiModal">
   <div class="modal">
@@ -551,17 +608,35 @@ button{cursor:pointer}
 // STATE
 // ═══════════════════════════════════════════════════════════
 const USDA_KEY = null; // key is now server-side in USDA_API_KEY env var
-const MEALS = ['Breakfast','Lunch','Dinner','Snacks'];
-const MEAL_COLORS = {'Breakfast':'#c8963a','Lunch':'#2a5c45','Dinner':'#534AB7','Snacks':'#D4537E'};
+
+// Default meal colors pool
+const MEAL_COLOR_POOL = ['#c8963a','#2a5c45','#534AB7','#D4537E','#2563a8','#c0392b','#16a085','#8e44ad'];
+
+// Foods measured in pieces/units rather than grams
+const PIECE_FOODS = {
+  egg:       { units:[{label:'small egg',g:38},{label:'medium egg',g:44},{label:'large egg',g:50},{label:'extra large',g:56}], default:'large egg' },
+  banana:    { units:[{label:'small (6")',g:81},{label:'medium (7")',g:118},{label:'large (8")',g:136}], default:'medium (7")' },
+  apple:     { units:[{label:'small',g:149},{label:'medium',g:182},{label:'large',g:223}], default:'medium' },
+  orange:    { units:[{label:'small',g:96},{label:'medium',g:131},{label:'large',g:184}], default:'medium' },
+  bread:     { units:[{label:'thin slice',g:22},{label:'regular slice',g:28},{label:'thick slice',g:38}], default:'regular slice' },
+  slice:     { units:[{label:'thin slice',g:22},{label:'regular slice',g:28},{label:'thick slice',g:38}], default:'regular slice' },
+  chapati:   { units:[{label:'small (6")',g:40},{label:'medium (8")',g:55},{label:'large (10")',g:70}], default:'medium (8")' },
+  roti:      { units:[{label:'small',g:40},{label:'medium',g:55},{label:'large',g:70}], default:'medium' },
+  paratha:   { units:[{label:'small',g:60},{label:'medium',g:80},{label:'large',g:100}], default:'medium' },
+  cookie:    { units:[{label:'small',g:14},{label:'medium',g:28},{label:'large',g:42}], default:'medium' },
+  biscuit:   { units:[{label:'1 biscuit',g:10},{label:'2 biscuits',g:20},{label:'4 biscuits',g:40}], default:'1 biscuit' },
+  date:      { units:[{label:'1 date (pitted)',g:8},{label:'3 dates',g:24},{label:'5 dates',g:40}], default:'3 dates' },
+};
 
 let user = null;
 let profile = { name:'', email:'' };
 let goals = { calories:2000, prot:30, carb:45, fat:25 };
-let todayLog = { Breakfast:[], Lunch:[], Dinner:[], Snacks:[] };
+let userMeals = ['Breakfast','Lunch','Dinner','Snacks']; // customisable per user
+let todayLog = {};
 let history = {};
 let weeklyLog = {};
 let pendingAi = null;
-let pendingMeal = 'Lunch';
+let pendingAddItem = null; // item waiting for meal/qty confirmation
 let showMore = false;
 
 // ═══════════════════════════════════════════════════════════
@@ -577,14 +652,32 @@ function todayKey() {
   return new Date().toISOString().slice(0,10);
 }
 
+function getMealColor(meal) {
+  const idx = userMeals.indexOf(meal);
+  return MEAL_COLOR_POOL[idx % MEAL_COLOR_POOL.length];
+}
+
+function initTodayLog() {
+  const log = {};
+  userMeals.forEach(m => { log[m] = log[m] || []; });
+  return log;
+}
+
 function loadUserData() {
   if (!user) return;
   const prefix = user.isGuest ? 'dd_guest' : 'dd_' + user.id;
   const saved = LS.get(prefix + '_goals');
   if (saved) goals = saved;
+  const savedMeals = LS.get(prefix + '_meals');
+  if (savedMeals && Array.isArray(savedMeals)) userMeals = savedMeals;
+  else userMeals = ['Breakfast','Lunch','Dinner','Snacks'];
   const log = LS.get(prefix + '_log_' + todayKey());
-  if (log) todayLog = log;
-  else todayLog = { Breakfast:[], Lunch:[], Dinner:[], Snacks:[] };
+  if (log) {
+    todayLog = log;
+    userMeals.forEach(m => { if (!todayLog[m]) todayLog[m] = []; });
+  } else {
+    todayLog = initTodayLog();
+  }
   const hist = LS.get(prefix + '_history');
   if (hist) history = hist;
   if (!user.isGuest) {
@@ -598,6 +691,7 @@ function saveLog() {
   if (!user) return;
   const prefix = user.isGuest ? 'dd_guest' : 'dd_' + user.id;
   LS.set(prefix + '_log_' + todayKey(), todayLog);
+  LS.set(prefix + '_meals', userMeals);
   const allHistory = LS.get(prefix + '_history') || {};
   const totals = computeTotals();
   allHistory[todayKey()] = { ...totals, meals: JSON.parse(JSON.stringify(todayLog)) };
@@ -608,12 +702,12 @@ function saveLog() {
 function computeTotals() {
   const all = Object.values(todayLog).flat();
   return {
-    cal: round1(all.reduce((s,x) => s + x.cal, 0)),
-    prot: round1(all.reduce((s,x) => s + x.prot, 0)),
-    carb: round1(all.reduce((s,x) => s + x.carb, 0)),
-    fat: round1(all.reduce((s,x) => s + x.fat, 0)),
-    fiber: round1(all.reduce((s,x) => s + (x.fiber||0), 0)),
-    sugar: round1(all.reduce((s,x) => s + (x.sugar||0), 0)),
+    cal:    round1(all.reduce((s,x) => s + (x.cal||0), 0)),
+    prot:   round1(all.reduce((s,x) => s + (x.prot||0), 0)),
+    carb:   round1(all.reduce((s,x) => s + (x.carb||0), 0)),
+    fat:    round1(all.reduce((s,x) => s + (x.fat||0), 0)),
+    fiber:  round1(all.reduce((s,x) => s + (x.fiber||0), 0)),
+    sugar:  round1(all.reduce((s,x) => s + (x.sugar||0), 0)),
     sodium: round1(all.reduce((s,x) => s + (x.sodium||0), 0)),
   };
 }
@@ -637,11 +731,14 @@ function setAuthMsg(msg, type) {
 function continueAsGuest() {
   user = { id: 'guest', name: 'Guest', email: '', isGuest: true };
   profile = { name: 'Guest', email: '' };
+  userMeals = ['Breakfast','Lunch','Dinner','Snacks'];
   const savedGoals = LS.get('dd_guest_goals');
   if (savedGoals) goals = savedGoals;
+  const savedMeals = LS.get('dd_guest_meals');
+  if (savedMeals) userMeals = savedMeals;
   const log = LS.get('dd_guest_log_' + todayKey());
-  if (log) todayLog = log;
-  else todayLog = { Breakfast:[], Lunch:[], Dinner:[], Snacks:[] };
+  if (log) { todayLog = log; userMeals.forEach(m => { if (!todayLog[m]) todayLog[m] = []; }); }
+  else todayLog = initTodayLog();
   const hist = LS.get('dd_guest_history');
   if (hist) history = hist;
   LS.set('dd_session', { id: 'guest', isGuest: true });
@@ -852,10 +949,9 @@ function renderDropdown(foods, query) {
 
 async function pickFood(fdcId, name) {
   closeDropdown();
-  setStatus('Adding…', '');
-  const qty = parseFloat(document.getElementById('qty').value) || 100;
+  setStatus('Fetching nutrition data…', '');
   try {
-    const cacheKey = `fdc_${fdcId}_${qty}`;
+    const cacheKey = `fdc_${fdcId}_100`;
     let nutrients;
     if (searchCache[cacheKey]) {
       nutrients = searchCache[cacheKey];
@@ -863,17 +959,20 @@ async function pickFood(fdcId, name) {
       const res = await fetch('/.netlify/functions/usda-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fdcId, grams: qty }),
+        body: JSON.stringify({ fdcId, grams: 100 }),
       });
       nutrients = await res.json();
       searchCache[cacheKey] = nutrients;
     }
-    addToMeal({ name, qty, ...nutrients, source: 'usda' }, pendingMeal);
-    setStatus(`✓ Added ${name} (${qty}g)`, 'ok');
+    // store base100 nutrients for rescaling later
+    const base100 = { ...nutrients };
+    pendingAddItem = { name, fdcId, base100, source: 'usda' };
+    setStatus('', '');
     document.getElementById('foodSearch').value = '';
     lastQuery = '';
+    openAddModal(pendingAddItem);
   } catch {
-    setStatus('Failed to load nutrition data', 'err');
+    setStatus('Failed to fetch nutrition data', 'err');
   }
 }
 
@@ -912,48 +1011,42 @@ function openAiModal(food) {
 }
 
 async function fetchAi(food) {
-  const qty = parseFloat(document.getElementById('qty').value) || 100;
   try {
     const res = await fetch('/.netlify/functions/ai-nutrition', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ food, grams: qty }),
+      body: JSON.stringify({ food, grams: 100 }),
     });
     if (res.status === 429) throw new Error('rate_limit');
     if (!res.ok) throw new Error('api_error');
     const json = await res.json();
     if (json.error) throw new Error(json.error);
 
-    pendingAi = {
-      name: food, qty,
-      cal: json.calories || 0,
-      prot: json.protein_g || 0,
-      carb: json.carbs_g || 0,
-      fat: json.fat_g || 0,
-      fiber: json.fiber_g || 0,
-      sugar: json.sugar_g || 0,
+    const base100 = {
+      cal: json.calories || 0, prot: json.protein_g || 0,
+      carb: json.carbs_g || 0, fat: json.fat_g || 0,
+      fiber: json.fiber_g || 0, sugar: json.sugar_g || 0,
       sodium: json.sodium_mg || 0,
-      source: 'ai',
     };
+    pendingAi = { name: food, base100, source: 'ai' };
 
     document.getElementById('aiLoading').style.display = 'none';
-    document.getElementById('aiModalSub').textContent = `AI estimate for "${food}" (${qty}g)`;
+    document.getElementById('aiModalSub').textContent = `AI estimate for "${food}" per 100g`;
     document.getElementById('aiResult').innerHTML = `
-      <div class="modal-nut-row"><span class="modal-nut-name">Calories</span><span class="modal-nut-val">${pendingAi.cal} kcal</span></div>
-      <div class="modal-nut-row"><span class="modal-nut-name">Protein</span><span class="modal-nut-val">${pendingAi.prot}g</span></div>
-      <div class="modal-nut-row"><span class="modal-nut-name">Carbohydrates</span><span class="modal-nut-val">${pendingAi.carb}g</span></div>
-      <div class="modal-nut-row"><span class="modal-nut-name">Fat</span><span class="modal-nut-val">${pendingAi.fat}g</span></div>
-      <div class="modal-nut-row"><span class="modal-nut-name">Fiber</span><span class="modal-nut-val">${pendingAi.fiber}g</span></div>
-      <div class="modal-nut-row"><span class="modal-nut-name">Sugar</span><span class="modal-nut-val">${pendingAi.sugar}g</span></div>
-      <div class="modal-nut-row"><span class="modal-nut-name">Sodium</span><span class="modal-nut-val">${pendingAi.sodium} mg</span></div>
-      <div class="modal-warn">⚠ AI estimates — values may vary from actual food</div>
+      <div class="modal-nut-row"><span class="modal-nut-name">Calories</span><span class="modal-nut-val">${base100.cal} kcal</span></div>
+      <div class="modal-nut-row"><span class="modal-nut-name">Protein</span><span class="modal-nut-val">${base100.prot}g</span></div>
+      <div class="modal-nut-row"><span class="modal-nut-name">Carbohydrates</span><span class="modal-nut-val">${base100.carb}g</span></div>
+      <div class="modal-nut-row"><span class="modal-nut-name">Fat</span><span class="modal-nut-val">${base100.fat}g</span></div>
+      <div class="modal-nut-row"><span class="modal-nut-name">Fiber</span><span class="modal-nut-val">${base100.fiber}g</span></div>
+      <div class="modal-nut-row"><span class="modal-nut-name">Sodium</span><span class="modal-nut-val">${base100.sodium}mg</span></div>
+      <div class="modal-warn">⚠ AI estimates per 100g — you'll set the quantity next</div>
     `;
     document.getElementById('aiResult').style.display = 'block';
     document.getElementById('aiAddBtn').style.display = 'inline-block';
   } catch (e) {
     document.getElementById('aiLoading').style.display = 'none';
     const msg = e.message === 'rate_limit'
-      ? 'AI rate limit reached — please try again in a moment'
+      ? 'AI rate limit reached — please try again shortly'
       : 'Could not get AI data — please try again';
     document.getElementById('aiResult').innerHTML = `<div style="color:var(--red);font-size:13px">${msg}</div>`;
     document.getElementById('aiResult').style.display = 'block';
@@ -964,16 +1057,115 @@ function closeAiModal() { document.getElementById('aiModal').classList.remove('o
 
 function addAiFood() {
   if (!pendingAi) return;
-  addToMeal({ ...pendingAi }, pendingMeal);
   closeAiModal();
-  document.getElementById('foodSearch').value = '';
-  showToast(`Added ${pendingAi.name} (AI estimate)`, 'success');
+  pendingAddItem = { ...pendingAi };
+  openAddModal(pendingAddItem);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ADD-TO-MEAL MODAL
+// ═══════════════════════════════════════════════════════════
+function openAddModal(item, preselectedMeal) {
+  if (!item) return;
+  pendingAddItem = item;
+  document.getElementById('addModalFood').textContent = item.name;
+
+  // Meal picker
+  const grid = document.getElementById('mealPickGrid');
+  const defaultMeal = preselectedMeal || userMeals[0];
+  grid.innerHTML = userMeals.map(m => {
+    const color = getMealColor(m);
+    return `<button class="meal-pick-btn${m===defaultMeal?' sel':''}" onclick="selectAddMeal(this,'${esc(m)}')">
+      <span class="meal-dot-sm" style="background:${color}"></span>${esc(m)}
+    </button>`;
+  }).join('');
+
+  // Qty picker
+  const pieceInfo = getPieceUnits(item.name);
+  const qtyInput = document.getElementById('qtyPickInput');
+  const unitSel  = document.getElementById('qtyPickUnit');
+  const qtyLabel = document.getElementById('qtyPickLabel');
+  unitSel.innerHTML = '';
+
+  if (pieceInfo) {
+    qtyLabel.textContent = 'How many?';
+    qtyInput.value = 1;
+    qtyInput.step = '1';
+    pieceInfo.units.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.label;
+      opt.textContent = u.label;
+      if (u.label === pieceInfo.default) opt.selected = true;
+      unitSel.appendChild(opt);
+    });
+  } else {
+    qtyLabel.textContent = 'Amount (grams)';
+    qtyInput.value = 100;
+    qtyInput.step = '1';
+    ['g','ml'].forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u; opt.textContent = u;
+      unitSel.appendChild(opt);
+    });
+  }
+
+  document.getElementById('addModal').classList.add('open');
+}
+
+function selectAddMeal(btn, meal) {
+  document.querySelectorAll('.meal-pick-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+
+function onUnitChange() {} // placeholder — handled in confirmAdd
+
+function closeAddModal() { document.getElementById('addModal').classList.remove('open'); }
+
+function confirmAdd() {
+  if (!pendingAddItem) return;
+  const selectedMealBtn = document.querySelector('.meal-pick-btn.sel');
+  const meal = selectedMealBtn ? selectedMealBtn.textContent.trim() : userMeals[0];
+  const qtyAmt = parseFloat(document.getElementById('qtyPickInput').value) || 1;
+  const unit   = document.getElementById('qtyPickUnit').value;
+
+  const pieceInfo = getPieceUnits(pendingAddItem.name);
+  let grams;
+  if (pieceInfo && unit !== 'g' && unit !== 'ml') {
+    const u = pieceInfo.units.find(u => u.label === unit);
+    grams = u ? round1(u.g * qtyAmt) : qtyAmt;
+  } else {
+    grams = qtyAmt;
+  }
+
+  const s = grams / 100;
+  const b = pendingAddItem.base100 || {};
+  const item = {
+    name:        pendingAddItem.name,
+    source:      pendingAddItem.source,
+    base100:     pendingAddItem.base100,
+    qty:         grams,
+    displayQty:  qtyAmt,
+    displayUnit: unit,
+    cal:   round1((b.cal||0)   * s),
+    prot:  round1((b.prot||0)  * s),
+    carb:  round1((b.carb||0)  * s),
+    fat:   round1((b.fat||0)   * s),
+    fiber: round1((b.fiber||0) * s),
+    sugar: round1((b.sugar||0) * s),
+    sodium:round1((b.sodium||0)* s),
+  };
+
+  addToMeal(item, meal);
+  closeAddModal();
+  const displayQtyStr = pieceInfo && unit !== 'g' ? `${qtyAmt} × ${unit}` : `${grams}g`;
+  setStatus(`✓ Added ${item.name} (${displayQtyStr}) to ${meal}`, 'ok');
 }
 
 // ═══════════════════════════════════════════════════════════
 // MEAL MANAGEMENT
 // ═══════════════════════════════════════════════════════════
 function addToMeal(item, meal) {
+  if (!todayLog[meal]) todayLog[meal] = [];
   todayLog[meal].push(item);
   saveLog();
   renderAll();
@@ -985,8 +1177,63 @@ function removeFood(meal, idx) {
   renderAll();
 }
 
-function setActiveMeal(meal) {
-  pendingMeal = meal;
+function updateFoodQty(meal, idx, newQty, newUnit) {
+  const item = todayLog[meal][idx];
+  if (!item) return;
+  let grams = parseFloat(newQty) || 100;
+  // if unit-based, convert to grams
+  if (newUnit && newUnit !== 'g' && newUnit !== 'ml') {
+    const match = getPieceUnits(item.name);
+    if (match) {
+      const u = match.units.find(u => u.label === newUnit);
+      if (u) grams = u.g * grams;
+    }
+  }
+  // rescale nutrients from base100
+  const base = item.base100;
+  if (base) {
+    const s = grams / 100;
+    item.cal    = round1(base.cal * s);
+    item.prot   = round1(base.prot * s);
+    item.carb   = round1(base.carb * s);
+    item.fat    = round1(base.fat * s);
+    item.fiber  = round1(base.fiber * s);
+    item.sugar  = round1(base.sugar * s);
+    item.sodium = round1(base.sodium * s);
+  }
+  item.qty = round1(grams);
+  item.displayQty = newQty;
+  item.displayUnit = newUnit;
+  saveLog();
+  renderTotals();
+  renderSidePanel();
+}
+
+function addMealSection(name) {
+  name = name.trim();
+  if (!name || userMeals.includes(name)) return false;
+  userMeals.push(name);
+  todayLog[name] = [];
+  saveLog();
+  renderAll();
+  return true;
+}
+
+function removeMealSection(name) {
+  if (userMeals.length <= 1) return;
+  userMeals = userMeals.filter(m => m !== name);
+  delete todayLog[name];
+  saveLog();
+  renderAll();
+}
+
+// detect piece-based food from name
+function getPieceUnits(name) {
+  const lower = name.toLowerCase();
+  for (const [key, val] of Object.entries(PIECE_FOODS)) {
+    if (lower.includes(key)) return val;
+  }
+  return null;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1006,7 +1253,7 @@ function renderMeals() {
   colH.className = 'col-heads' + (extra ? ' expanded' : '');
   colH.innerHTML = `
     <div class="ch" style="text-align:left">Food</div>
-    <div class="ch">g</div>
+    <div class="ch">Qty</div>
     <div class="ch">Cal</div>
     <div class="ch" style="color:#2563a8">Prot</div>
     <div class="ch" style="color:var(--accent)">Carb</div>
@@ -1018,50 +1265,72 @@ function renderMeals() {
   const container = document.getElementById('meals-container');
   container.innerHTML = '';
 
-  MEALS.forEach(meal => {
+  userMeals.forEach(meal => {
     const items = todayLog[meal] || [];
-    const mealCal = Math.round(items.reduce((s,x) => s+x.cal, 0));
-    const color = MEAL_COLORS[meal];
+    const mealCal = Math.round(items.reduce((s,x) => s+(x.cal||0), 0));
+    const color = getMealColor(meal);
 
     const sec = document.createElement('div');
     sec.className = 'meal-section';
     sec.innerHTML = `
-      <div class="meal-header" onclick="setActiveMeal('${meal}')">
+      <div class="meal-header">
         <div class="meal-header-left">
           <span class="meal-dot" style="background:${color}"></span>
-          <span class="meal-name">${meal}</span>
+          <span class="meal-name">${esc(meal)}</span>
           <span class="meal-kcal">${mealCal} kcal</span>
         </div>
-        <button class="meal-add" onclick="event.stopPropagation();setActiveMeal('${meal}');document.getElementById('foodSearch').focus()">+ add</button>
+        <button class="meal-add" onclick="openAddModal(null,'${esc(meal)}')">+ add</button>
       </div>
     `;
 
     if (!items.length) {
-      sec.innerHTML += `<div class="empty-meal">No items — search above to add ${meal.toLowerCase()}</div>`;
+      sec.innerHTML += `<div class="empty-meal">No items yet — click + add or search above</div>`;
     } else {
       items.forEach((item, idx) => {
         const extraCells = extra ? `
           <div class="cell" style="color:#3B6D11">${item.fiber||0}g</div>
           <div class="cell" style="color:#888">${item.sugar||0}g</div>
-          <div class="cell">${item.sodium||0}</div>
+          <div class="cell">${Math.round(item.sodium||0)}</div>
         ` : '';
         const barProt = (item.prot * 4) / (item.cal || 1) * 100;
         const barCarb = (item.carb * 4) / (item.cal || 1) * 100;
         const barFat  = (item.fat  * 9) / (item.cal || 1) * 100;
+
+        // Build inline qty control
+        const pieceInfo = getPieceUnits(item.name);
+        let qtyControl = '';
+        if (pieceInfo) {
+          const curUnit = item.displayUnit || pieceInfo.default;
+          const curAmt  = item.displayQty || 1;
+          const opts = pieceInfo.units.map(u => `<option value="${esc(u.label)}" ${u.label===curUnit?'selected':''}>${esc(u.label)}</option>`).join('');
+          qtyControl = `<div class="qty-row-wrap">
+            <input class="qty-row-input" style="width:32px" type="number" value="${curAmt}" min="0.1" step="0.5"
+              onchange="updateFoodQty('${esc(meal)}',${idx},this.value,document.getElementById('unit_${meal}_${idx}').value)"/>
+            <select class="qty-row-input" id="unit_${meal}_${idx}" style="width:90px;padding:2px 3px"
+              onchange="updateFoodQty('${esc(meal)}',${idx},document.querySelector('#unit_${meal}_${idx}').previousSibling.value,this.value)">${opts}</select>
+          </div>`;
+        } else {
+          const curQty = item.qty || 100;
+          qtyControl = `<div class="qty-row-wrap">
+            <input class="qty-row-input" type="number" value="${curQty}" min="1" step="1"
+              onchange="updateFoodQty('${esc(meal)}',${idx},this.value,'g')"/>
+            <span class="qty-row-unit">g</span>
+          </div>`;
+        }
+
         const row = document.createElement('div');
         row.className = 'food-row' + (extra ? ' expanded' : '');
         row.innerHTML = `
           <div class="food-name-cell">
-            <div class="fn">${esc(item.name)}<span class="tag tag-${item.source === 'ai' ? 'ai' : 'usda'}">${item.source === 'ai' ? 'AI' : 'USDA'}</span></div>
-            <div class="fs">${item.qty}g</div>
+            <div class="fn">${esc(item.name)}<span class="tag tag-${item.source==='ai'?'ai':'usda'}">${item.source==='ai'?'AI':'USDA'}</span></div>
           </div>
-          <div class="cell">${item.qty}g</div>
-          <div class="cell cell-cal">${Math.round(item.cal)}</div>
-          <div class="cell" style="color:#2563a8">${item.prot}g</div>
-          <div class="cell" style="color:var(--accent)">${item.carb}g</div>
-          <div class="cell" style="color:var(--gold)">${item.fat}g</div>
+          <div class="cell">${qtyControl}</div>
+          <div class="cell cell-cal">${Math.round(item.cal||0)}</div>
+          <div class="cell" style="color:#2563a8">${item.prot||0}g</div>
+          <div class="cell" style="color:var(--accent)">${item.carb||0}g</div>
+          <div class="cell" style="color:var(--gold)">${item.fat||0}g</div>
           ${extraCells}
-          <button class="del-btn" onclick="removeFood('${meal}',${idx})">×</button>
+          <button class="del-btn" onclick="removeFood('${esc(meal)}',${idx})">×</button>
         `;
         sec.appendChild(row);
         const bar = document.createElement('div');
@@ -1286,9 +1555,8 @@ function renderProfilePage() {
       <div class="profile-card" style="text-align:center;padding:28px">
         <div style="font-size:40px;margin-bottom:12px">👤</div>
         <div style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:6px">You're browsing as a guest</div>
-        <div style="font-size:13px;color:var(--text3);margin-bottom:20px;line-height:1.6">Your data is saved on this device only.<br>Create a free account to save across devices and track your diet history.</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:20px;line-height:1.6">Your data is saved on this device only.<br>Create a free account to save across devices.</div>
         <button class="btn-primary" style="width:auto;padding:10px 28px;margin-bottom:10px" onclick="doLogout()">Create an account</button>
-        <div style="font-size:12px;color:var(--text3)">Takes 30 seconds — no credit card</div>
       </div>
       <div class="profile-card">
         <h3>Nutrition goals</h3>
@@ -1303,6 +1571,16 @@ function renderProfilePage() {
     </div>`;
     return;
   }
+
+  const mealChips = userMeals.map((m, i) => {
+    const color = getMealColor(m);
+    return `<span class="meal-chip active">
+      <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
+      ${esc(m)}
+      ${userMeals.length > 1 ? `<button class="meal-chip-del" onclick="removeMealSection('${esc(m)}');renderProfilePage()" title="Remove">×</button>` : ''}
+    </span>`;
+  }).join('');
+
   pg.innerHTML = `<div class="profile-page">
     <div class="profile-title">Profile &amp; Settings</div>
     <div class="profile-card">
@@ -1311,6 +1589,25 @@ function renderProfilePage() {
       <div class="profile-field"><label>Email</label><input type="email" id="prof-email" value="${esc(profile.email||user?.email||'')}" disabled style="opacity:.6"/></div>
       <button class="btn-save" onclick="saveProfile()">Save changes</button>
     </div>
+
+    <div class="profile-card">
+      <h3>Meal sections</h3>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Customise your meal sections — add or remove as you like</div>
+      <div class="meal-chip-row" id="mealChipRow">${mealChips}</div>
+      <div class="add-meal-row">
+        <input class="add-meal-input" id="newMealInput" placeholder="e.g. Brunch, Pre-workout, Suhoor…" maxlength="24"
+          onkeydown="if(event.key==='Enter')addMealFromProfile()"/>
+        <button class="add-meal-btn" onclick="addMealFromProfile()">+ Add</button>
+      </div>
+      <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px">
+        ${['Brunch','Pre-workout','Post-workout','Suhoor','Iftar','Evening snack','Supper'].map(s =>
+          `<span style="font-size:11px;padding:3px 9px;background:var(--surface2);border:1px solid var(--border2);border-radius:14px;cursor:pointer;color:var(--text2)"
+            onclick="quickAddMeal('${s}')">${s}</span>`
+        ).join('')}
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">Tap a suggestion to add it quickly</div>
+    </div>
+
     <div class="profile-card">
       <h3>Nutrition goals</h3>
       <div class="profile-field"><label>Daily calorie goal (kcal)</label><input type="number" id="prof-calories" value="${goals.calories}"/></div>
@@ -1321,11 +1618,35 @@ function renderProfilePage() {
       </div>
       <button class="btn-save" onclick="saveGoals()">Update goals</button>
     </div>
+
     <div class="profile-card">
       <h3>Account actions</h3>
       <button class="btn-logout" onclick="doLogout()">Sign out</button>
     </div>
   </div>`;
+}
+
+function addMealFromProfile() {
+  const inp = document.getElementById('newMealInput');
+  if (!inp) return;
+  const name = inp.value.trim();
+  if (!name) return;
+  if (addMealSection(name)) {
+    inp.value = '';
+    renderProfilePage();
+    showToast(`"${name}" added to your meals`, 'success');
+  } else {
+    showToast('That section already exists', 'error');
+  }
+}
+
+function quickAddMeal(name) {
+  if (addMealSection(name)) {
+    renderProfilePage();
+    showToast(`"${name}" added`, 'success');
+  } else {
+    showToast(`"${name}" already exists`, 'error');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1404,6 +1725,8 @@ document.addEventListener('click', e => {
     if (session.isGuest) {
       user = { id: 'guest', name: 'Guest', email: '', isGuest: true };
       profile = { name: 'Guest', email: '' };
+      const savedMeals = LS.get('dd_guest_meals');
+      userMeals = (savedMeals && Array.isArray(savedMeals)) ? savedMeals : ['Breakfast','Lunch','Dinner','Snacks'];
       loadUserData();
       showScreen('app');
       return;
