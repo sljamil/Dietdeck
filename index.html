@@ -300,12 +300,13 @@ button{cursor:pointer}
 }
 
 /* qty per row */
-.qty-row-wrap{display:flex;align-items:center;gap:3px;min-width:0}
-.qty-row-input{width:38px;padding:3px 4px;border:1px solid var(--border2);border-radius:6px;font-size:11px;text-align:center;background:var(--surface2);color:var(--text);outline:none;flex-shrink:0}
-.qty-row-input:focus{border-color:var(--accent2)}
-.qty-row-sel{flex:1;min-width:0;padding:3px 4px;border:1px solid var(--border2);border-radius:6px;font-size:11px;background:var(--surface2);color:var(--text);outline:none;cursor:pointer;max-width:112px}
+.qty-row-wrap{display:flex;align-items:center;gap:4px;min-width:0}
+.qty-row-input{width:52px;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;font-size:12px;text-align:center;background:var(--surface2);color:var(--text);outline:none;flex-shrink:0;-moz-appearance:textfield}
+.qty-row-input::-webkit-inner-spin-button,.qty-row-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.qty-row-input:focus{border-color:var(--accent2);background:var(--surface)}
+.qty-row-sel{flex:1;min-width:0;padding:3px 4px;border:1px solid var(--border2);border-radius:6px;font-size:11px;background:var(--surface2);color:var(--text);outline:none;cursor:pointer;max-width:110px}
 .qty-row-sel:focus{border-color:var(--accent2)}
-.qty-row-unit{font-size:10px;color:var(--text3);flex-shrink:0}
+.qty-row-unit{font-size:11px;color:var(--text3);flex-shrink:0}
 
 /* add-to-meal picker modal */
 .add-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:200;align-items:center;justify-content:center;padding:16px}
@@ -1377,7 +1378,7 @@ function renderMeals() {
             `<option value="${esc(u.label)}" ${u.label===curUnit?'selected':''}>${esc(u.label)}</option>`
           ).join('');
           qtyControl = `<div class="qty-row-wrap">
-            <input class="qty-row-input" id="${countId}" type="number" value="${curAmt}" min="0.5" step="0.5" style="width:36px"
+            <input class="qty-row-input" id="${countId}" type="number" value="${curAmt}" min="0.5" step="0.5"
               onchange="updateFoodQty('${esc(meal)}',${idx},this.value,document.getElementById('${unitId}').value)"/>
             <select class="qty-row-sel" id="${unitId}"
               onchange="updateFoodQty('${esc(meal)}',${idx},document.getElementById('${countId}').value,this.value)">${opts}</select>
