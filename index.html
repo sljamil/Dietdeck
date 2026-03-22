@@ -143,10 +143,10 @@ button{cursor:pointer}
 .meal-name{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--text2)}
 .meal-kcal{font-size:11px;color:var(--text3)}
 .meal-add{font-size:11px;color:var(--accent);font-weight:500;border:none;background:none;padding:2px 8px}
-.col-heads{display:grid;grid-template-columns:1fr 48px 52px 52px 52px 52px 18px;gap:4px;padding:5px 16px;border-bottom:1px solid var(--border)}
+.col-heads{display:grid;grid-template-columns:1fr 160px 52px 52px 52px 52px 18px;gap:4px;padding:5px 16px;border-bottom:1px solid var(--border)}
 .ch{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);text-align:right}
 .ch:first-child{text-align:left}
-.food-row{display:grid;grid-template-columns:1fr 48px 52px 52px 52px 52px 18px;gap:4px;padding:9px 16px;align-items:center;border-bottom:1px solid var(--border);animation:fadeIn .25s ease}
+.food-row{display:grid;grid-template-columns:1fr 160px 52px 52px 52px 52px 18px;gap:4px;padding:9px 16px;align-items:center;border-bottom:1px solid var(--border);animation:fadeIn .25s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 .food-row:last-child{border-bottom:none}
 .food-name-cell .fn{font-size:13px;font-weight:500;color:var(--text)}
@@ -163,11 +163,11 @@ button{cursor:pointer}
 .more-btn{font-size:12px;color:var(--accent);background:none;border:none;font-weight:500}
 
 /* Extra cols when expanded */
-.food-row.expanded,.col-heads.expanded{grid-template-columns:1fr 48px 52px 52px 52px 52px 52px 52px 52px 18px}
+.food-row.expanded,.col-heads.expanded{grid-template-columns:1fr 160px 52px 52px 52px 52px 52px 52px 52px 18px}
 
 /* Totals bar */
-.totals-bar{display:grid;grid-template-columns:1fr 48px 52px 52px 52px 52px 18px;gap:4px;padding:10px 16px;background:var(--surface2);border-top:1.5px solid var(--border2);margin-top:auto}
-.totals-bar.expanded{grid-template-columns:1fr 48px 52px 52px 52px 52px 52px 52px 52px 18px}
+.totals-bar{display:grid;grid-template-columns:1fr 160px 52px 52px 52px 52px 18px;gap:4px;padding:10px 16px;background:var(--surface2);border-top:1.5px solid var(--border2);margin-top:auto}
+.totals-bar.expanded{grid-template-columns:1fr 160px 52px 52px 52px 52px 52px 52px 52px 18px}
 .tot-label{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
 .tot-val{font-size:13px;font-weight:600;text-align:right}
 
@@ -296,14 +296,16 @@ button{cursor:pointer}
 }
 @media(max-width:520px){
   .col-heads .ch:nth-child(n+4),.food-row .cell:nth-child(n+4){display:none}
-  .col-heads,.food-row,.totals-bar{grid-template-columns:1fr 48px 52px 18px}
+  .col-heads,.food-row,.totals-bar{grid-template-columns:1fr 120px 52px 18px}
 }
 
 /* qty per row */
-.qty-row-wrap{display:flex;align-items:center;gap:3px}
-.qty-row-input{width:48px;padding:3px 4px;border:1px solid var(--border2);border-radius:6px;font-size:11px;text-align:center;background:var(--surface2);color:var(--text);outline:none}
+.qty-row-wrap{display:flex;align-items:center;gap:3px;min-width:0}
+.qty-row-input{width:38px;padding:3px 4px;border:1px solid var(--border2);border-radius:6px;font-size:11px;text-align:center;background:var(--surface2);color:var(--text);outline:none;flex-shrink:0}
 .qty-row-input:focus{border-color:var(--accent2)}
-.qty-row-unit{font-size:10px;color:var(--text3)}
+.qty-row-sel{flex:1;min-width:0;padding:3px 4px;border:1px solid var(--border2);border-radius:6px;font-size:11px;background:var(--surface2);color:var(--text);outline:none;cursor:pointer;max-width:112px}
+.qty-row-sel:focus{border-color:var(--accent2)}
+.qty-row-unit{font-size:10px;color:var(--text3);flex-shrink:0}
 
 /* add-to-meal picker modal */
 .add-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:200;align-items:center;justify-content:center;padding:16px}
@@ -1237,7 +1239,6 @@ function updateFoodQty(meal, idx, newQty, newUnit) {
   saveLog();
 
   // ── Surgical DOM update — don't re-render the row, just patch the cells ──
-  // Find the row by its data attributes to avoid losing input focus
   const rowId = `frow_${meal}_${idx}`;
   const row = document.getElementById(rowId);
   if (row) {
@@ -1367,21 +1368,26 @@ function renderMeals() {
 
         // Build inline qty control
         const pieceInfo = getPieceUnits(item.name);
+        const mealKey = meal.replace(/[^a-zA-Z0-9]/g,'_');
+        const countId = `cnt_${mealKey}_${idx}`;
+        const unitId  = `unt_${mealKey}_${idx}`;
         let qtyControl = '';
         if (pieceInfo) {
           const curUnit = item.displayUnit || pieceInfo.default;
-          const curAmt  = item.displayQty || 1;
-          const opts = pieceInfo.units.map(u => `<option value="${esc(u.label)}" ${u.label===curUnit?'selected':''}>${esc(u.label)}</option>`).join('');
+          const curAmt  = item.displayQty != null ? item.displayQty : 1;
+          const opts = pieceInfo.units.map(u =>
+            `<option value="${esc(u.label)}" ${u.label===curUnit?'selected':''}>${esc(u.label)}</option>`
+          ).join('');
           qtyControl = `<div class="qty-row-wrap">
-            <input class="qty-row-input" style="width:32px" type="number" value="${curAmt}" min="0.1" step="0.5"
-              onchange="updateFoodQty('${esc(meal)}',${idx},this.value,document.getElementById('unit_${meal}_${idx}').value)"/>
-            <select class="qty-row-input" id="unit_${meal}_${idx}" style="width:90px;padding:2px 3px"
-              onchange="updateFoodQty('${esc(meal)}',${idx},document.querySelector('#unit_${meal}_${idx}').previousSibling.value,this.value)">${opts}</select>
+            <input class="qty-row-input" id="${countId}" type="number" value="${curAmt}" min="0.5" step="0.5" style="width:36px"
+              onchange="updateFoodQty('${esc(meal)}',${idx},this.value,document.getElementById('${unitId}').value)"/>
+            <select class="qty-row-sel" id="${unitId}"
+              onchange="updateFoodQty('${esc(meal)}',${idx},document.getElementById('${countId}').value,this.value)">${opts}</select>
           </div>`;
         } else {
           const curQty = item.qty || 100;
           qtyControl = `<div class="qty-row-wrap">
-            <input class="qty-row-input" type="number" value="${curQty}" min="1" step="1"
+            <input class="qty-row-input" id="${countId}" type="number" value="${curQty}" min="1" step="1"
               onchange="updateFoodQty('${esc(meal)}',${idx},this.value,'g')"/>
             <span class="qty-row-unit">g</span>
           </div>`;
